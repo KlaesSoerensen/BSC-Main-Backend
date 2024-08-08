@@ -3,16 +3,16 @@
   "WorkspaceRootPath": "D:\\Github\\ASP.NETCoreWebAPI\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\player.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\player.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\achievement.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\achievement.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\transform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\transform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\player.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\player.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\minigame.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -70,7 +70,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
@@ -86,7 +86,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "Achievement.cs",
               "DocumentMoniker": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Achievement.cs",
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\Achievement.cs",
@@ -99,15 +99,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "Player.cs",
               "DocumentMoniker": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Player.cs",
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\Player.cs",
               "ToolTip": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Player.cs",
               "RelativeToolTip": "ASP.NETCoreWebAPI\\Models\\Player.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAYAAABSAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAYAAAAYAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-08-07T18:55:05.665Z"
+              "WhenOpened": "2024-08-07T18:55:05.665Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -147,7 +148,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "Transform.cs",
               "DocumentMoniker": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Transform.cs",
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\Transform.cs",
@@ -155,8 +156,7 @@
               "RelativeToolTip": "ASP.NETCoreWebAPI\\Models\\Transform.cs",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAoAAAAFAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-08-07T18:35:47.511Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-08-07T18:35:47.511Z"
             },
             {
               "$type": "Document",
