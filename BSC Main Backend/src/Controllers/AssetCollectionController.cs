@@ -1,11 +1,11 @@
-﻿using BSC_Main_Backend.dto.responses;
-using BSC_Main_Backend.dto;
+﻿using BSC_Main_Backend.dto;
+using BSC_Main_Backend.dto.response;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BSC_Main_Backend.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("collection")]
 
 public class AssetCollectionController : ControllerBase
 {
@@ -17,8 +17,8 @@ public class AssetCollectionController : ControllerBase
         _logger = logger;
     }
     
-    [HttpGet(Name = "<base-URL>/collection/<collectionId>")]
-    public FetchAssetCollectionResponseDTO GetAssetCollection()
+    [HttpGet("{collectionId}",Name = "Get collection by id")]
+    public AssetCollectionResponseDTO GetAssetCollection([FromRoute] uint collectionId)
     {
         // Fetch from database and perform logic as needed.
         var entries = new List<AssetCollectionEntryDTO>
@@ -27,7 +27,7 @@ public class AssetCollectionController : ControllerBase
             // new AssetCollectionEntryDTO(2, new TransformDTO())
         };
 
-        var response = new FetchAssetCollectionResponseDTO(
+        var response = new AssetCollectionResponseDTO(
             Id: 123,
             Original: 456,
             Name: "Sample Collection",
