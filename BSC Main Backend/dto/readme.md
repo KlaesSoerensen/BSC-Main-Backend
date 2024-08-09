@@ -1,0 +1,1 @@
+﻿When transferred as data, all field names of all types above should be pascalCase instead of C#'s insistance on CamelCase.
