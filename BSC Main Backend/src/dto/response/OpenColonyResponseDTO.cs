@@ -1,4 +1,4 @@
-﻿namespace BSC_Main_Backend.dto;
+﻿namespace BSC_Main_Backend.dto.response;
 
 /// <param name="Code">Join Code</param>
 /// <param name="LobbyId">Lobby id as known to the Multiplayer Broker</param>

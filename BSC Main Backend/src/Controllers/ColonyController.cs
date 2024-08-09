@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using BSC_Main_Backend.dto.response;
 
 namespace BSC_Main_Backend.Controllers;
 
@@ -14,15 +15,5 @@ public class ColonyController
         _logger = logger;
     }
 
-    [HttpGet(Name = "<base-URL>/asset/<assetId>")]
-    public FetchAssetResponseDTO GetAsset()
-    {
-        return null;
-    }
-    
-    [HttpGet(Name = "<base-URL>/assets?ids=x,y,z")]
-    public FetchAssetResponseDTO GetAssets()
-    {
-        return null;
-    }
+
 }
