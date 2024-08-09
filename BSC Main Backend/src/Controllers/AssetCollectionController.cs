@@ -1,4 +1,4 @@
-﻿using BSC_Main_Backend.dto.response;
+﻿using BSC_Main_Backend.dto.responses;
 using BSC_Main_Backend.dto;
 using Microsoft.AspNetCore.Mvc;
 
