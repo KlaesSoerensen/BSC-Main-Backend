@@ -2,7 +2,7 @@
 
 namespace BSC_Main_Backend.dto;
 
-public record FetchAssetResponseDTO(
+public record AssetResponseDTO(
         uint Id,
         string UseCase, // useCase: string "icon", "environment", "player", and so on.
         string Type, // Type: string"image/png", "image/jpeg", "image/webp", "image/svg+xml" (MIME types)
@@ -10,5 +10,5 @@ public record FetchAssetResponseDTO(
         uint Height, // res. y of LOD 0 
         bool HasLODs, 
         Blob Blob, // Maybe uint8[]
-        List<GetAssetLODResponseDTO> LODs
+        List<AssetLODResponseDTO> LODs
         );

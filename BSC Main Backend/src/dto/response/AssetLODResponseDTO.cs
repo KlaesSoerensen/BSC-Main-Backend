@@ -2,7 +2,7 @@
 
 namespace BSC_Main_Backend.dto;
 
-public record GetAssetLODResponseDTO(
+public record AssetLODResponseDTO(
         uint Id,
         uint DetailLevel,
         Blob Blob // Maybe uint8[]
