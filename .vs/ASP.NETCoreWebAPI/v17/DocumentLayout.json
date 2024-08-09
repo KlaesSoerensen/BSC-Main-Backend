@@ -3,16 +3,20 @@
   "WorkspaceRootPath": "D:\\Github\\ASP.NETCoreWebAPI\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\player.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\player.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\transform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\transform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\achievement.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\achievement.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\transform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\transform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\player.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\player.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\preferences.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\preferences.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\minigame.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -21,10 +25,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\location.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\location.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\preferences.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|solutionrelative:asp.netcorewebapi\\models\\preferences.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DED026A8-57E4-4953-BDAF-0EBE5A224C48}|ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI.csproj|d:\\github\\asp.netcorewebapi\\asp.netcorewebapi\\models\\colonyasset.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -70,11 +70,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 6,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 3,
               "Title": "Preferences.cs",
               "DocumentMoniker": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Preferences.cs",
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\Preferences.cs",
@@ -82,7 +82,8 @@
               "RelativeToolTip": "ASP.NETCoreWebAPI\\Models\\Preferences.cs",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAkAAAAFAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-08-07T18:59:10.643Z"
+              "WhenOpened": "2024-08-07T18:59:10.643Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -92,20 +93,20 @@
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\Achievement.cs",
               "ToolTip": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Achievement.cs",
               "RelativeToolTip": "ASP.NETCoreWebAPI\\Models\\Achievement.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAsAAAAAAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAgAAACBAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-08-07T18:57:32.347Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "Player.cs",
               "DocumentMoniker": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Player.cs",
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\Player.cs",
               "ToolTip": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Player.cs",
               "RelativeToolTip": "ASP.NETCoreWebAPI\\Models\\Player.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAYAAAAYAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAcAAAAuAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-08-07T18:55:05.665Z",
               "EditorCaption": ""
@@ -148,7 +149,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "Transform.cs",
               "DocumentMoniker": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Transform.cs",
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\Transform.cs",
@@ -156,7 +157,8 @@
               "RelativeToolTip": "ASP.NETCoreWebAPI\\Models\\Transform.cs",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAoAAAAFAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-08-07T18:35:47.511Z"
+              "WhenOpened": "2024-08-07T18:35:47.511Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -172,7 +174,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "MiniGame.cs",
               "DocumentMoniker": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\MiniGame.cs",
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\MiniGame.cs",
@@ -196,7 +198,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "Location.cs",
               "DocumentMoniker": "D:\\Github\\ASP.NETCoreWebAPI\\ASP.NETCoreWebAPI\\Models\\Location.cs",
               "RelativeDocumentMoniker": "ASP.NETCoreWebAPI\\Models\\Location.cs",
