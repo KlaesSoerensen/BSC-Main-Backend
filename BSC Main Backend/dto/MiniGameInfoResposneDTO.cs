@@ -5,5 +5,5 @@ public record MiniGameInfoResposneDTO(
         string Name,
         uint Icon,
         string Description,
-        Object Difficualties //TODO: What Type here
+        string Difficualties // (json)
     );

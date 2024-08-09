@@ -4,3 +4,22 @@
     build:
       context: .
       dockerfile: Dockerfile
+  version: '3'
+  test_database:
+    container_name: test_database
+    image: postgres:latest
+    restart: always
+    ports:
+      - "8432:5432"
+    environment:
+      - POSTGRES_PASSWORD=testdb
+      - POSTGRES_USER=testdb
+      - POSTGRES_DB=coverage
+      # - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5 
