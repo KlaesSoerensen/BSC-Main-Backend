@@ -1,6 +1,6 @@
 ﻿namespace BSC_Main_Backend.dto;
 
-public record MiniGameInfoResposneDTO(
+public record MiniGameInfoResponseDTO(
         uint Id,
         string Name,
         uint Icon,
