@@ -1,0 +1,6 @@
+﻿services:
+  bsc main backendbscmainbackend:
+    image: bsc main backendbscmainbackend
+    build:
+      context: .
+      dockerfile: Dockerfile
