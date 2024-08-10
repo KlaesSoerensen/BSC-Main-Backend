@@ -4,7 +4,6 @@
     build:
       context: .
       dockerfile: Dockerfile
-  version: '3'
   test_database:
     container_name: test_database
     image: postgres:latest

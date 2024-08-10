@@ -10,5 +10,6 @@ public record AssetResponseDTO(
         uint Height, // res. y of LOD 0 
         bool HasLODs, 
         Blob Blob, // Maybe uint8[]
+        string Alias,
         List<AssetLODResponseDTO> LODs
         );
