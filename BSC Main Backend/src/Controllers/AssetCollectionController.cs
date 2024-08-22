@@ -17,7 +17,12 @@ public class AssetCollectionController : ControllerBase
         _logger = logger;
     }
     
-    [HttpGet("{collectionId}",Name = "Get collection by id")]
+    /// <summary>
+    /// Returns the AssetCollection of that id.
+    /// </summary>
+    /// <param name="asssetCollectionId">The ID of the AssetCollection</param>
+    /// <returns>AssetCollectionResponseDTO</returns>
+    [HttpGet("{asssetCollectionId}",Name = "GetAssetCollection")]
     public AssetCollectionResponseDTO GetAssetCollection([FromRoute] uint collectionId)
     {
         // Fetch from database and perform logic as needed.
