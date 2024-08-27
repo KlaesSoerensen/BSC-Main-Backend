@@ -1,11 +1,18 @@
+using BSC_Main_Backend.Models;
 using BSC_Main_Backend.services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+// Configure PostgreSQL connection using Entity Framework Core
+builder.Services.AddDbContext<DBContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 builder.Services.AddControllers();
 AppendInternalServices(builder.Services);
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -26,7 +33,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
 
 static void AppendInternalServices(IServiceCollection services)
 {
