@@ -10,11 +10,11 @@ import (
 )
 
 type ServiceStatus struct {
-	ColonyDBConnectionError   bool   `json:"colonyDBStatus"`
-	LanguageDBConnectionError bool   `json:"languageDBStatus"`
-	PlayerDBConnectionError   bool   `json:"playerDBStatus"`
-	StatusMessage             string `json:"statusMessage"`
-	Timestamp                 string `json:"timestamp"`
+	ColonyDBConnection   bool   `json:"colonyDBStatus"`
+	LanguageDBConnection bool   `json:"languageDBStatus"`
+	PlayerDBConnection   bool   `json:"playerDBStatus"`
+	StatusMessage        string `json:"statusMessage"`
+	Timestamp            string `json:"timestamp"`
 }
 
 func applyHealthApi(app *fiber.App, appContext meta.ApplicationContext) error {
@@ -38,11 +38,11 @@ func applyHealthApi(app *fiber.App, appContext meta.ApplicationContext) error {
 			statusMessage = "OK"
 		}
 		var status = ServiceStatus{
-			StatusMessage:             statusMessage,
-			ColonyDBConnectionError:   colonyDBErr != nil,
-			LanguageDBConnectionError: languageDBErr != nil,
-			PlayerDBConnectionError:   playerDBErr != nil,
-			Timestamp:                 time.Now().Format(time.RFC3339),
+			StatusMessage:        statusMessage,
+			ColonyDBConnection:   colonyDBErr == nil,
+			LanguageDBConnection: languageDBErr == nil,
+			PlayerDBConnection:   playerDBErr == nil,
+			Timestamp:            time.Now().Format(time.RFC3339),
 		}
 		return c.JSON(status)
 	})
