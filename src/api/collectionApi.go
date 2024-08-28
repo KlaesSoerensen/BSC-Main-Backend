@@ -9,5 +9,6 @@ import (
 
 func applyCollectionApi(app *fiber.App, appContext meta.ApplicationContext) error {
 	log.Println("[Collection API] Applying collection API")
+
 	return nil
 }
