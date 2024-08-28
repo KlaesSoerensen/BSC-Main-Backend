@@ -9,5 +9,6 @@ import (
 
 func applyCatalog(app *fiber.App, appContext meta.ApplicationContext) error {
 	log.Println("[Catalog API] Applying catalog API")
+
 	return nil
 }

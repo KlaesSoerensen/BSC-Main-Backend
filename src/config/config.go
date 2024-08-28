@@ -15,22 +15,32 @@ var cache = map[string]string{}
 // Checks the exec args and loads the first one found. Ignores the rest.
 // Accepts flags: "--dev", "--prod" (prod is handled by the docker-compose file currentyly)
 func DetectAndApplyENV() error {
+	wd, wdErr := os.Getwd()
+	if wdErr != nil {
+		return fmt.Errorf("[config] Error getting working directory: %s", wdErr.Error())
+	}
+	log.Printf("[config] Working directory: %s\n", wd)
 	args := os.Args
+	var envErr error
 	for _, arg := range args[1:] {
 		if arg == "--dev" {
 			log.Println("[config] --dev flag found, loading dev config")
-			return LoadDevConfig()
+			envErr = LoadDevConfig()
 		}
 		if arg == "--prod" {
 			log.Println("[config] --prod flag found, loading prod config")
-			return LoadProdConfig()
+			envErr = LoadProdConfig()
 		}
 	}
-	return nil
+	if envErr != nil {
+		return envErr
+	}
+
+	return LoadDBCredentials()
 }
 
 func LoadDBCredentials() error {
-	return LoadCustomConfig("serviceCredentials.env")
+	return LoadCustomConfig("service.credentials")
 }
 
 // Overwrites any env variables currently set in environment
@@ -48,8 +58,6 @@ func LoadCustomConfig(nameOfFile string) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("[config] Error getting working directory: %s", err.Error())
-	} else {
-		log.Printf("[config] Working directory: %s\n", wd)
 	}
 	qualifiedPath := filepath.Join(wd, nameOfFile)
 	err = godotenv.Overload(qualifiedPath) // Overwrites all env variables with the ones in the .env file
