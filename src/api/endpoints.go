@@ -7,9 +7,38 @@ import (
 )
 
 func ApplyEndpoints(app *fiber.App, appContext meta.ApplicationContext) error {
-	app.Get("/api/v1", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, World!")
-	})
-
+	if err := applyCatalog(app, appContext); err != nil {
+		return err
+	}
+	if err := applyAssetApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applyColonyApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applyCollectionApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applyHealthApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applyLocationApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applyLodApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applyMinigameApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applyMinigameApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applyPlayerApi(app, appContext); err != nil {
+		return err
+	}
+	if err := applySessionApi(app, appContext); err != nil {
+		return err
+	}
 	return nil
 }
