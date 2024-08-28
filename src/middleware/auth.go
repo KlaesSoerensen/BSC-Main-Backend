@@ -2,11 +2,12 @@ package middleware
 
 import (
 	"otte_main_backend/src/config"
+	"otte_main_backend/src/meta"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func ApplyAuth(app *fiber.App) error {
+func ApplyAuth(app *fiber.App, appContext meta.ApplicationContext) error {
 	authTokenName, err := config.LoudGet("AUTH_TOKEN_NAME")
 	if err != nil {
 		return err

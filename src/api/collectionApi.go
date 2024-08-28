@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func ApplyEndpoints(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyCollectionApi(app *fiber.App, appContext meta.ApplicationContext) error {
 	app.Get("/api/v1", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})

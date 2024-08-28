@@ -6,12 +6,14 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+
+	"otte_main_backend/src/meta"
 )
 
-func ApplyTo(app *fiber.App) error {
+func ApplyTo(app *fiber.App, appContext meta.ApplicationContext) error {
 	app.Use(cors.New()) //Default CORS middleware
 	app.Use(logRequests)
-	return ApplyAuth(app)
+	return ApplyAuth(app, appContext)
 }
 
 func logRequests(c *fiber.Ctx) error {
