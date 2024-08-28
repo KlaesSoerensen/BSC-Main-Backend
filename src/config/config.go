@@ -29,6 +29,10 @@ func DetectAndApplyENV() error {
 	return nil
 }
 
+func LoadDBCredentials() error {
+	return LoadCustomConfig("serviceCredentials.env")
+}
+
 // Overwrites any env variables currently set in environment
 func LoadDevConfig() error {
 	return LoadCustomConfig("dev.env")
@@ -53,15 +57,6 @@ func LoadCustomConfig(nameOfFile string) error {
 		return fmt.Errorf("[config] Error loading .env file into environment: %s", err.Error())
 	}
 	return nil
-}
-
-// Overrides the default .env file location and the initialization of the env variables
-func SetRelativeLocation(relativePath string) {
-	err := godotenv.Load(relativePath + "/dev.env")
-	if err != nil {
-		fmt.Print("Error loading .env file into environment")
-		fmt.Println(err)
-	}
 }
 
 // LoudGet func to get env value, will return an error on empty string
