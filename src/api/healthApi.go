@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"otte_main_backend/src/meta"
 	"time"
 
@@ -17,6 +18,8 @@ type ServiceStatus struct {
 }
 
 func applyHealthApi(app *fiber.App, appContext meta.ApplicationContext) error {
+	log.Println("[Health API] Applying health API")
+
 	app.Get("/api/v1", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})
