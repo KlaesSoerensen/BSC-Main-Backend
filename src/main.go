@@ -22,16 +22,15 @@ func main() {
 	}
 
 	app := fiber.New()
-
-	apiErr := api.ApplyEndpoints(app)
-	if apiErr != nil {
-		panic(apiErr)
-	}
 	middlewareErr := middleware.ApplyTo(app)
 	if middlewareErr != nil {
 		panic(middlewareErr)
 	}
 
+	apiErr := api.ApplyEndpoints(app)
+	if apiErr != nil {
+		panic(apiErr)
+	}
 	log.Fatal(app.Listen(":" + strconv.FormatInt(servicePort, 10)))
 }
 
