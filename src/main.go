@@ -4,6 +4,8 @@ import (
 	"log"
 	api "otte_main_backend/src/api"
 	"otte_main_backend/src/config"
+	db "otte_main_backend/src/database"
+	"otte_main_backend/src/meta"
 	middleware "otte_main_backend/src/middleware"
 	"strconv"
 
@@ -21,14 +23,23 @@ func main() {
 		panic(err)
 	}
 
+	colonyDB, languageDB, playerDB, dbErr := ConnectDatabases()
+	if dbErr != nil {
+		panic(dbErr)
+	}
+	var context = meta.ApplicationContext{
+		ColonyAssetDB: colonyDB,
+		LanguageDB:    languageDB,
+		PlayerDB:      playerDB,
+		DDH:           config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"),
+	}
+
 	app := fiber.New()
-	middlewareErr := middleware.ApplyTo(app)
-	if middlewareErr != nil {
+	if middlewareErr := middleware.ApplyTo(app, context); middlewareErr != nil {
 		panic(middlewareErr)
 	}
 
-	apiErr := api.ApplyEndpoints(app)
-	if apiErr != nil {
+	if apiErr := api.ApplyEndpoints(app, context); apiErr != nil {
 		panic(apiErr)
 	}
 	log.Fatal(app.Listen(":" + strconv.FormatInt(servicePort, 10)))
@@ -47,4 +58,23 @@ func initServerResources() (ServicePort, error) {
 	}
 
 	return servicePortInt, nil
+}
+
+func ConnectDatabases() (db.ColonyAssetDB, db.LanguageDB, db.PlayerDB, error) {
+	colonyAssetDB, err := db.ConnectColonyAssetDB()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	languageDB, err := db.ConnectLanguageDB()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	playerDB, err := db.ConnectPlayerDB()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return colonyAssetDB, languageDB, playerDB, nil
 }
