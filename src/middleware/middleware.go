@@ -13,6 +13,7 @@ import (
 func ApplyTo(app *fiber.App, appContext meta.ApplicationContext) error {
 	app.Use(cors.New()) //Default CORS middleware
 	app.Use(logRequests)
+
 	return ApplyAuth(app, appContext)
 }
 

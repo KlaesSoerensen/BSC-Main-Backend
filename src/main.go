@@ -42,6 +42,7 @@ func main() {
 	if apiErr := api.ApplyEndpoints(app, context); apiErr != nil {
 		panic(apiErr)
 	}
+
 	log.Fatal(app.Listen(":" + strconv.FormatInt(servicePort, 10)))
 }
 
