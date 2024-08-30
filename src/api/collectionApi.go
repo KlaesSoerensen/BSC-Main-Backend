@@ -8,11 +8,11 @@ import (
 )
 
 type MinimizedAssetWithTransformDTO struct {
-	HasLODs   bool            `json:"hasLODs"`
-	Width     uint32          `json:"width"`
-	Height    uint32          `json:"height"`
-	LODs      []LODDetailsDTO `json:"LODs"`
-	Transform TransformDTO    `json:"transform"`
+	HasLODs   bool         `json:"hasLODs"`
+	Width     uint32       `json:"width"`
+	Height    uint32       `json:"height"`
+	LODs      []LODDetails `json:"LODs"`
+	Transform TransformDTO `json:"transform"`
 }
 
 type AssetCollectionResponse struct {
@@ -100,7 +100,7 @@ func applyCollectionApi(app *fiber.App, appContext meta.ApplicationContext) erro
 					HasLODs: raw.HasLODs,
 					Width:   uint32(raw.Width),
 					Height:  uint32(raw.Height),
-					LODs:    []LODDetailsDTO{},
+					LODs:    []LODDetails{},
 					Transform: TransformDTO{
 						XOffset: raw.XOffset,
 						YOffset: raw.YOffset,
@@ -115,7 +115,7 @@ func applyCollectionApi(app *fiber.App, appContext meta.ApplicationContext) erro
 
 			// Add LOD details if present
 			if raw.LODID != nil {
-				lod := LODDetailsDTO{
+				lod := LODDetails{
 					ID:          *raw.LODID,
 					DetailLevel: uint32(*raw.DetailLevel),
 				}
