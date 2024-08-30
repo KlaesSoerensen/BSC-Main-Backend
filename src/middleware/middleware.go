@@ -11,11 +11,11 @@ import (
 )
 
 func ApplyTo(app *fiber.App, appContext meta.ApplicationContext) error {
-	app.Use(cors.New()) //Default CORS middleware
-
 	if err := ApplyAuth(app, appContext); err != nil {
 		return err
 	}
+
+	app.Use(cors.New()) //Default CORS middleware
 
 	app.Use(logRequests)
 
