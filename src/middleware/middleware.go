@@ -12,12 +12,18 @@ import (
 
 func ApplyTo(app *fiber.App, appContext meta.ApplicationContext) error {
 	app.Use(cors.New()) //Default CORS middleware
+
+	if err := ApplyAuth(app, appContext); err != nil {
+		return err
+	}
+
 	app.Use(logRequests)
 
-	return ApplyAuth(app, appContext)
+	return nil
 }
 
 func logRequests(c *fiber.Ctx) error {
-	log.Println("Request recieved: ", c.Method(), c.Path(), "\t\t at ", time.Now().Format(time.RFC3339), " from ", c.IP())
+	log.Println("Request recieved: ", c.Method(), c.Path(), "\t\t at ", time.Now().Format(time.RFC3339), " from ", c.IP(), " \tresponse: ", c.Response().StatusCode())
+
 	return c.Next()
 }
