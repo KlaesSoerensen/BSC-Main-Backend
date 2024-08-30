@@ -43,7 +43,10 @@ func main() {
 		panic(apiErr)
 	}
 
-	log.Fatal(app.Listen(":" + strconv.FormatInt(servicePort, 10)))
+	// Blocking
+	runtimeError := app.Listen(":" + strconv.FormatInt(servicePort, 10))
+
+	log.Fatal(runtimeError)
 }
 
 type ServicePort = int64
