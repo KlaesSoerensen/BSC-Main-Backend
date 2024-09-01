@@ -31,21 +31,25 @@ func DetectAndApplyENV() error {
 			log.Println("[config] --prod flag found, loading prod config")
 			envErr = LoadProdConfig()
 		}
-	}
-	if envErr != nil {
-		return envErr
+
+		if envErr != nil {
+			return envErr
+		}
 	}
 
-	return LoadDBCredentials()
-}
-
-func LoadDBCredentials() error {
-	return LoadCustomConfig("service.credentials")
+	return nil
 }
 
 // Overwrites any env variables currently set in environment
 func LoadDevConfig() error {
-	return LoadCustomConfig("dev.env")
+	err := LoadCustomConfig("dev.env")
+	if err != nil {
+		return err
+	}
+	return loadDevCredentials()
+}
+func loadDevCredentials() error {
+	return LoadCustomConfig("dev.credentials")
 }
 
 // Overwrites any env variables currently set in environment
