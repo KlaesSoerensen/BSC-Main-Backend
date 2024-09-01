@@ -1,5 +1,5 @@
 # Dedicated GoLang image
-FROM golang:1.22-alpine
+FROM golang:1.23-alpine
 
 # Establishing internal workdir
 WORKDIR /otteBackendService
