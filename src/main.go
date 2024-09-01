@@ -43,10 +43,17 @@ func main() {
 		panic(apiErr)
 	}
 
-	// Blocking
-	runtimeError := app.Listen(":" + strconv.FormatInt(servicePort, 10))
+	log.Fatal(doTheTLSThing(servicePort, app))
+}
 
-	log.Fatal(runtimeError)
+func doTheTLSThing(port ServicePort, app *fiber.App) error {
+	//Self signed cert generated following:
+	//https://gist.github.com/taoyuan/39d9bc24bafc8cc45663683eae36eb1a
+	//See "OTTE Dev Cert Details" file for details
+	return app.ListenTLS(
+		":"+strconv.FormatInt(port, 10),
+		"certs/otte_dev_cert.crt",
+		"certs/otte_dev_cert.key")
 }
 
 type ServicePort = int64
