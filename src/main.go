@@ -7,6 +7,7 @@ import (
 	db "otte_main_backend/src/database"
 	"otte_main_backend/src/meta"
 	middleware "otte_main_backend/src/middleware"
+	"otte_main_backend/src/openapi"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -31,17 +32,21 @@ func main() {
 		ColonyAssetDB: colonyDB,
 		LanguageDB:    languageDB,
 		PlayerDB:      playerDB,
-		DDH:           config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"),
+	}
+	app := fiber.New()
+	apiDef, err := openapi.New(app)
+	if err != nil {
+		panic(err)
 	}
 
-	app := fiber.New()
-	if middlewareErr := middleware.ApplyTo(app, context); middlewareErr != nil {
+	if middlewareErr := middleware.ApplyTo(apiDef); middlewareErr != nil {
 		panic(middlewareErr)
 	}
 
-	if apiErr := api.ApplyEndpoints(app, context); apiErr != nil {
+	if apiErr := api.ApplyEndpoints(apiDef); apiErr != nil {
 		panic(apiErr)
 	}
+	apiDef.BuildApi(&context)
 
 	log.Fatal(doTheTLSThing(servicePort, app))
 }

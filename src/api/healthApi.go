@@ -1,12 +1,11 @@
 package api
 
 import (
-	"log"
 	"otte_main_backend/src/meta"
-	"time"
+	"otte_main_backend/src/openapi"
+	"reflect"
 
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
 )
 
 type ServiceStatus struct {
@@ -17,35 +16,48 @@ type ServiceStatus struct {
 	Timestamp            string `json:"timestamp"`
 }
 
-func applyHealthApi(app *fiber.App, appContext meta.ApplicationContext) error {
-	log.Println("[Health API] Applying health API")
+func applyHealthApi(apiDef *openapi.ApiDefinition) {
 
-	app.Get("/api/v1", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, World!")
-	})
+	apiDef.Add("/api/v1",
+		func(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+			return c.SendString("Hello, World!")
+		},
+		&openapi.EndpointOptions{
+			AuthRequired: openapi.AuthNone,
+			ResultSet: []openapi.EndpointResult{
+				{
+					Code: 200,
+					Body: reflect.String,
+				},
+			},
+		},
+	)
+	/*
+		app.Get("/api/v1", )
 
-	app.Get("/api/v1/health", func(c *fiber.Ctx) error {
-		//Check db connections here
-		colonyDBErr := appContext.ColonyAssetDB.Connection(func(tx *gorm.DB) error { return nil })
-		languageDBErr := appContext.LanguageDB.Connection(func(tx *gorm.DB) error { return nil })
-		playerDBErr := appContext.PlayerDB.Connection(func(tx *gorm.DB) error { return nil })
-		var statusMessage string
-		if colonyDBErr != nil || languageDBErr != nil || playerDBErr != nil {
-			c.Status(fiber.StatusInternalServerError)
-			statusMessage = "Error"
-		} else {
-			c.Status(fiber.StatusOK)
-			statusMessage = "OK"
-		}
-		var status = ServiceStatus{
-			StatusMessage:        statusMessage,
-			ColonyDBConnection:   colonyDBErr == nil,
-			LanguageDBConnection: languageDBErr == nil,
-			PlayerDBConnection:   playerDBErr == nil,
-			Timestamp:            time.Now().Format(time.RFC3339),
-		}
-		return c.JSON(status)
-	})
+		app.Get("/api/v1/health", func(c *fiber.Ctx) error {
+			//Check db connections here
+			colonyDBErr := appContext.ColonyAssetDB.Connection(func(tx *gorm.DB) error { return nil })
+			languageDBErr := appContext.LanguageDB.Connection(func(tx *gorm.DB) error { return nil })
+			playerDBErr := appContext.PlayerDB.Connection(func(tx *gorm.DB) error { return nil })
+			var statusMessage string
+			if colonyDBErr != nil || languageDBErr != nil || playerDBErr != nil {
+				c.Status(fiber.StatusInternalServerError)
+				statusMessage = "Error"
+			} else {
+				c.Status(fiber.StatusOK)
+				statusMessage = "OK"
+			}
+			var status = ServiceStatus{
+				StatusMessage:        statusMessage,
+				ColonyDBConnection:   colonyDBErr == nil,
+				LanguageDBConnection: languageDBErr == nil,
+				PlayerDBConnection:   playerDBErr == nil,
+				Timestamp:            time.Now().Format(time.RFC3339),
+			}
+			return c.JSON(status)
+		})
 
-	return nil
+		return nil
+	*/
 }

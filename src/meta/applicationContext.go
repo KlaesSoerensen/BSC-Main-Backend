@@ -9,5 +9,6 @@ type ApplicationContext struct {
 	ColonyAssetDB db.ColonyAssetDB
 	LanguageDB    db.LanguageDB
 	PlayerDB      db.PlayerDB
-	DDH           string
+	//NOT USED ANYMORE. Use the one on the ApiDefinition
+	DDH string
 }

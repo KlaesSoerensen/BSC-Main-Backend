@@ -8,16 +8,15 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 
 	"otte_main_backend/src/meta"
+	"otte_main_backend/src/openapi"
 )
 
-func ApplyTo(app *fiber.App, appContext meta.ApplicationContext) error {
-	if err := ApplyAuth(app, appContext); err != nil {
-		return err
-	}
+func ApplyTo(apiDef *openapi.ApiDefinition) error {
+	apiDef.Middleware.Add(cors.New()) //Default CORS middleware
 
-	app.Use(cors.New()) //Default CORS middleware
-
-	app.Use(logRequests)
+	apiDef.Middleware.AddFallingEdge(func(ctx *fiber.Ctx, appContext *meta.ApplicationContext) error {
+		return logRequests(ctx)
+	})
 
 	return nil
 }
