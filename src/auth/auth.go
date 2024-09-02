@@ -2,25 +2,16 @@ package auth
 
 import (
 	"fmt"
+	"otte_main_backend/src/config"
 	"otte_main_backend/src/meta"
-	"otte_main_backend/src/openapi"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func ApplyAuth(apiDef *openapi.ApiDefinition) error {
-
-	apiDef.Middleware.AddRisingEdge(func(context *fiber.Ctx, appContext *meta.ApplicationContext) error {
-		return naiveCheckForHeaderAuth(context, apiDef.AuthTokenName, apiDef.DDH)
-	})
-
-	return nil
-}
-
-var tokenName string
-
-func GetNaiveAuth(apiDef *openapi.ApiDefinition) {
-
+func GetNaiveAuth(serviceConstants *config.ServiceConstants) func(*fiber.Ctx, *meta.ApplicationContext) error {
+	return func(context *fiber.Ctx, appContext *meta.ApplicationContext) error {
+		return naiveCheckForHeaderAuth(context, serviceConstants.AuthToken, serviceConstants.DDH)
+	}
 }
 
 func naiveCheckForHeaderAuth(context *fiber.Ctx, tokenName string, defaultDebugHeader string) error {

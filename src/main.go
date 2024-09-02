@@ -19,7 +19,7 @@ func main() {
 		panic(envErr)
 	}
 
-	servicePort, err := initServerResources()
+	serviceConstants, err := config.NewServiceConstants()
 	if err != nil {
 		panic(err)
 	}
@@ -48,10 +48,10 @@ func main() {
 	}
 	apiDef.BuildApi(&context)
 
-	log.Fatal(doTheTLSThing(servicePort, app))
+	log.Fatal(doTheTLSThing(serviceConstants.ServicePort, app))
 }
 
-func doTheTLSThing(port ServicePort, app *fiber.App) error {
+func doTheTLSThing(port int64, app *fiber.App) error {
 	//Self signed cert generated following:
 	//https://gist.github.com/taoyuan/39d9bc24bafc8cc45663683eae36eb1a
 	//See "OTTE Dev Cert Details" file for details
@@ -59,21 +59,6 @@ func doTheTLSThing(port ServicePort, app *fiber.App) error {
 		":"+strconv.FormatInt(port, 10),
 		"certs/otte_dev_cert.crt",
 		"certs/otte_dev_cert.key")
-}
-
-type ServicePort = int64
-
-func initServerResources() (ServicePort, error) {
-	servicePortStr, err := config.LoudGet("SERVICE_PORT")
-	if err != nil {
-		return -1, err
-	}
-	servicePortInt, err := strconv.ParseInt(servicePortStr, 10, 32)
-	if err != nil {
-		return -1, err
-	}
-
-	return servicePortInt, nil
 }
 
 func ConnectDatabases() (db.ColonyAssetDB, db.LanguageDB, db.PlayerDB, error) {

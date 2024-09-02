@@ -4,6 +4,7 @@ import (
 	"log"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/config"
+	"otte_main_backend/src/main"
 	"otte_main_backend/src/meta"
 	"reflect"
 
@@ -50,11 +51,10 @@ type EndpointOptions struct {
 }
 
 type ApiDefinition struct {
-	fiberApp      *fiber.App
-	endpoints     []Endpoint
-	Middleware    *MiddlewareConfiguration
-	DDH           string
-	AuthTokenName string
+	fiberApp         *fiber.App
+	endpoints        []Endpoint
+	Middleware       *MiddlewareConfiguration
+	ServiceConstants *main.ServiceConstants
 }
 
 var DEFAULT_ENDPOINT_OPTIONS = EndpointOptions{
@@ -85,11 +85,9 @@ func New(fiberApp *fiber.App) (*ApiDefinition, error) {
 		return nil, err
 	}
 	return &ApiDefinition{
-		fiberApp:      fiberApp,
-		endpoints:     []Endpoint{},
-		Middleware:    NewMiddlewareConfiguration(),
-		DDH:           config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"),
-		AuthTokenName: authTokenName,
+		fiberApp:   fiberApp,
+		endpoints:  []Endpoint{},
+		Middleware: NewMiddlewareConfiguration(),
 	}, nil
 }
 
@@ -99,7 +97,7 @@ func (apiDef *ApiDefinition) BuildApi(context *meta.ApplicationContext) error {
 	}
 	log.Println("[api] Adding ", len(apiDef.endpoints), " endpoints")
 	for _, endpoint := range apiDef.endpoints {
-		var authMethodForEndpoint = getAuthForEndpoint(endpoint.AuthRequired)
+		var authMethodForEndpoint = getAuthForEndpoint(endpoint.AuthRequired, apiDef.ServiceConstants)
 
 		apiDef.fiberApp.Add(endpoint.Method, endpoint.UrlExtension, func(c *fiber.Ctx) error {
 			authErr := authMethodForEndpoint(c, context)
@@ -120,18 +118,21 @@ func (apiDef *ApiDefinition) BuildApi(context *meta.ApplicationContext) error {
 			}
 			return endpointErr
 		})
+
 		log.Println("[api]", endpoint.Method, endpoint.UrlExtension, " auth: ", endpoint.AuthRequired)
 	}
 	return nil
 }
 
-func getAuthForEndpoint(authType AuthMethod) func(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+func getAuthForEndpoint(authType AuthMethod, serviceConstants *config.ServiceConstants) func(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
 	switch authType {
 	case AuthNone:
 		return auth.NoAuth
 	case AuthDefault:
 		return func(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-			return auth.naiveCheckForHeaderAuth(c, "DEFAULT-DEBUG-HEADER")
+			return func(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+				return auth.GetNaiveAuth(serviceConstants)
+			}
 		}
 	}
 	return nil

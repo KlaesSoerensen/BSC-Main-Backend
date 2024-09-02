@@ -5,12 +5,41 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 var cache = map[string]string{}
+
+type ServiceConstants struct {
+	ServicePort int64
+	DDH         string
+	AuthToken   string
+}
+
+func NewServiceConstants() (*ServiceConstants, error) {
+	servicePortStr, err := LoudGet("SERVICE_PORT")
+	if err != nil {
+		return nil, err
+	}
+	servicePortInt, err := strconv.ParseInt(servicePortStr, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	authTokenName, err := LoudGet("AUTH_TOKEN_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ServiceConstants{
+		ServicePort: servicePortInt,
+		DDH:         GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"),
+		AuthToken:   authTokenName,
+	}, nil
+}
 
 // Checks the exec args and loads the first one found. Ignores the rest.
 // Accepts flags: "--dev", "--prod" (prod is handled by the docker-compose file currentyly)
