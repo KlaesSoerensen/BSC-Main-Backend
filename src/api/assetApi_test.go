@@ -88,7 +88,7 @@ func TestIncorrectPath(t *testing.T) {
 	app := fiber.New()
 	applyAssetApi(app, meta.ApplicationContext{})
 
-	req := httptest.NewRequest("GET", "/api/v1/nonexistent", nil)
+	req := httptest.NewRequest("GET", "/api/v1/asset/nonexistent/1", nil)
 	resp, _ := app.Test(req)
 
 	assert.Equal(t, 404, resp.StatusCode)
