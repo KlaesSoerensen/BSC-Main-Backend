@@ -1,8 +1,9 @@
 package api
 
-type LODDetailsDTO struct {
-	ID          uint32 `json:"id"`
-	DetailLevel uint32 `json:"detailLevel"`
+type LODDetails struct {
+	ID             uint32 `json:"id"`
+	DetailLevel    uint32 `json:"detailLevel"`
+	GraphicalAsset uint32 `json:"graphicalAsset"`
 }
 
 type TransformDTO struct {
@@ -14,8 +15,8 @@ type TransformDTO struct {
 }
 
 type MinimizedAssetDTO struct {
-	HasLODs bool            `json:"hasLODs"`
-	Width   uint32          `json:"width"`
-	Height  uint32          `json:"height"`
-	LODs    []LODDetailsDTO `json:"LODs"`
+	HasLODs bool         `json:"hasLODs"`
+	Width   uint32       `json:"width"`
+	Height  uint32       `json:"height"`
+	LODs    []LODDetails `json:"LODs"`
 }
