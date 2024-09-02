@@ -4,6 +4,7 @@ import (
 	"errors"
 	"otte_main_backend/src/meta"
 	"strconv"
+	"strings"
 
 	"log"
 
@@ -12,7 +13,6 @@ import (
 )
 
 // DTO's
-// URL: <base-URL>/asset/<assetId>
 type AssetResponse struct {
 	ID      uint32       `json:"id"`
 	UseCase string       `json:"useCase"`
@@ -27,52 +27,80 @@ type AssetResponse struct {
 
 type MultiAssetResponse []AssetResponse
 
+// Apply the asset API routes
 func applyAssetApi(app *fiber.App, appContext meta.ApplicationContext) error {
 	log.Println("[Asset API] Applying asset API")
 
-	// app.Get(Path, Handler)
-	app.Get("/api/v1/asset/:assetId", func(c *fiber.Ctx) error { // Defined handler
-
-		// Fetch id from request params (fiber.Ctx is request context)
+	app.Get("/api/v1/asset/:assetId", func(c *fiber.Ctx) error {
 		var idstr = c.Params("assetId")
-
-		// Parse to int (look at return type - tuple)
 		id, parsingError := strconv.Atoi(idstr)
 
-		// Check if error occured and set status
 		if parsingError != nil {
 			c.Status(fiber.StatusBadRequest)
-
-			// Move forward in handling process
-			c.Response().Header.Set(appContext.DDH, "Error occured during parsing of id. Recieved: "+idstr)
-			return c.Next()
+			return c.SendString("Invalid ID format")
 		}
 
-		// Variabel named 'dto' of type AssetRresponse (struct)
+		if id == 0 {
+			c.Status(fiber.StatusNotFound)
+			return c.JSON(fiber.Map{"error": "Record not found"})
+		}
+
 		var dto AssetResponse
-		err := appContext.ColonyAssetDB. // Access ColonyAsset database.
-							Table(`GraphicalAsset`).                                                                                       // Define table
-							Select(`"GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob`). // Select parameters
-							Where(`"GraphicalAsset".id = ?`, id).                                                                          // Select metric
-							Joins(`LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id`).                                      // Join foreign key of LOD's
-							First(&dto).Error                                                                                              // Scan into dto, error is retuned
+		err := appContext.ColonyAssetDB.
+			Table("GraphicalAsset").
+			Select(`"GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob`).
+			Where(`"GraphicalAsset".id = ?`, id).
+			Joins(`LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id`).
+			First(&dto).Error
 
-		if err != nil { // Check if error occured
-			if errors.Is(err, gorm.ErrRecordNotFound) { // If user error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.Status(fiber.StatusNotFound)
-
-				return c.Next()
+				return c.JSON(fiber.Map{"error": "Record not found"})
 			}
 
-			// If server error
 			c.Status(fiber.StatusInternalServerError)
-			c.Response().Header.Set(appContext.DDH, err.Error())
-
-			return c.Next()
+			return c.JSON(fiber.Map{"error": "Internal server error"})
 		}
 
 		c.Status(fiber.StatusOK)
-		return c.JSON(dto) // Serialize and return
+		return c.JSON(dto)
+	})
+
+	app.Get("/api/v1/assets", func(c *fiber.Ctx) error {
+		idsParam := c.Query("ids")
+		idStrings := strings.Split(idsParam, ",")
+
+		ids := make([]int, len(idStrings))
+		for i, idStr := range idStrings {
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				c.Status(fiber.StatusBadRequest)
+				return c.SendString("Invalid ID format")
+			}
+			ids[i] = id
+		}
+
+		var assets []AssetResponse
+		err := appContext.ColonyAssetDB.
+			Table("GraphicalAsset").
+			Select(`"GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob`).
+			Where(`"GraphicalAsset".id IN ?`, ids).
+			Joins(`LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id`).
+			Find(&assets).Error
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.Status(fiber.StatusNotFound)
+				return c.JSON(fiber.Map{"error": "Records not found"})
+			}
+
+			c.Status(fiber.StatusInternalServerError)
+			return c.JSON(fiber.Map{"error": "Internal server error"})
+		}
+
+		c.Status(fiber.StatusOK)
+		return c.JSON(assets)
 	})
 
 	return nil
