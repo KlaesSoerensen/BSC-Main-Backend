@@ -1,16 +1,29 @@
 package api
 
 import (
+	"database/sql/driver"
 	"errors"
 	"log"
 	"otte_main_backend/src/meta"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
-// DTO's
+// StringArray is a custom type to handle PostgreSQL arrays.
+type StringArray []string
+
+// Scan implements the Scanner interface for StringArray.
+func (a *StringArray) Scan(value interface{}) error {
+	return pq.Array(a).Scan(value)
+}
+
+// Value implements the Valuer interface for StringArray.
+func (a StringArray) Value() (driver.Value, error) {
+	return pq.Array(a).Value()
+}
 
 // PlayerInfoResponse represents the data returned for a player's basic information.
 type PlayerInfoResponse struct {
@@ -23,10 +36,10 @@ type PlayerInfoResponse struct {
 
 // PlayerPreference represents a single preference item.
 type PlayerPreference struct {
-	ID              uint32   `json:"id"`
-	Key             string   `json:"key"`
-	ChosenValue     string   `json:"chosenValue"`
-	AvailableValues []string `json:"availableValues"`
+	ID              uint32      `json:"id"`
+	Key             string      `json:"key"`
+	ChosenValue     string      `json:"chosenValue"`
+	AvailableValues StringArray `json:"availableValues"` // Use the custom array type
 }
 
 // PlayerPreferencesResponse represents the data returned for a player's preferences.
@@ -49,9 +62,9 @@ func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
 
 		// Fetch player information from the database
 		var player PlayerInfoResponse
-		err = appContext.ColonyAssetDB.
+		err = appContext.PlayerDB.
 			Table("Player").
-			Select("id, IGN, sprite").
+			Select(`id, "IGN", sprite`).
 			Where("id = ?", playerId).
 			Scan(&player).Error
 
@@ -66,9 +79,9 @@ func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
 
 		// Compute the 'HasCompletedTutorial' field
 		var tutorialCompletedCount int64
-		err = appContext.ColonyAssetDB.
+		err = appContext.PlayerDB.
 			Table("Achievement").
-			Where("player = ? AND title = ?", playerId, "Tutorial Completed"). // Assuming "Tutorial Completed" is the title of the tutorial achievement, replaced by 'id (int)'?
+			Where("player = ? AND title = ?", playerId, "Tutorial Completed"). // Assuming "Tutorial Completed" is the title of the tutorial achievement
 			Count(&tutorialCompletedCount).Error
 		if err != nil {
 			c.Status(fiber.StatusInternalServerError)
@@ -77,7 +90,7 @@ func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
 		player.HasCompletedTutorial = tutorialCompletedCount > 0
 
 		// Fetch achievements for the player
-		err = appContext.ColonyAssetDB.
+		err = appContext.PlayerDB.
 			Table("Achievement").
 			Select("id").
 			Where("player = ?", playerId).
@@ -101,13 +114,20 @@ func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
 			return c.JSON(fiber.Map{"error": "Invalid player ID"})
 		}
 
-		// Fetch player preferences from the database
+		// Fetch player preferences and join them with available values
 		var preferences []PlayerPreference
-		err = appContext.ColonyAssetDB.
-			Table("PlayerPreference pp").
-			Select("pp.id, pp.key, pp.chosen_value, ap.available_values").
-			Joins("JOIN AvailablePreference ap ON pp.key = ap.key").
-			Where("pp.player = ?", playerId).
+		err = appContext.PlayerDB.
+			Table(`PlayerPreference`).
+			Select(`
+            "PlayerPreference".id,
+            "PlayerPreference"."preferenceKey",
+            "PlayerPreference"."chosenValue",
+            "AvailablePreference"."availableValues"
+        `).
+			Joins(`
+            JOIN "AvailablePreference" ON "PlayerPreference"."preferenceKey" = "AvailablePreference"."preferenceKey"
+        `).
+			Where(`"PlayerPreference".player = ?`, playerId).
 			Scan(&preferences).Error
 
 		if err != nil {
