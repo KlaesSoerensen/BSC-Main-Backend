@@ -6,10 +6,10 @@ import (
 	"otte_main_backend/src/config"
 	db "otte_main_backend/src/database"
 	"otte_main_backend/src/meta"
-	middleware "otte_main_backend/src/middleware"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func main() {
@@ -28,12 +28,9 @@ func main() {
 		panic(dbErr)
 	}
 	var context = meta.CreateApplicationContext(colonyDB, languageDB, playerDB, config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"))
-
 	app := fiber.New()
-	if middlewareErr := middleware.ApplyTo(app, context); middlewareErr != nil {
-		panic(middlewareErr)
-	}
 
+	app.Use(cors.New())
 	if apiErr := api.ApplyEndpoints(app, context); apiErr != nil {
 		panic(apiErr)
 	}
