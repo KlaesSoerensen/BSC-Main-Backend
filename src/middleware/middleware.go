@@ -5,25 +5,17 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-
-	"otte_main_backend/src/meta"
 )
 
-func ApplyTo(app *fiber.App, appContext *meta.ApplicationContext) error {
-	if err := ApplyAuth(app, appContext); err != nil {
-		return err
-	}
-
-	app.Use(cors.New()) //Default CORS middleware
-
-	app.Use(logRequests)
-
+// Outputs a log message for each request recieved in the format:
+//
+// "[TIME] [DATE] INC REQ: [METHOD] [PATH] at [TIME] from [IP] response: [STATUS_CODE]"
+func LogRequests(c *fiber.Ctx) error {
+	log.Printf("Incomming request: %s %-20s at %s origin %s result %d\n",
+		c.Method(),
+		c.Path(),
+		time.Now().Format(time.RFC3339),
+		c.IP(),
+		c.Response().StatusCode())
 	return nil
-}
-
-func logRequests(c *fiber.Ctx) error {
-	log.Println("Request recieved: ", c.Method(), c.Path(), "\t\t at ", time.Now().Format(time.RFC3339), " from ", c.IP(), " \tresponse: ", c.Response().StatusCode())
-
-	return c.Next()
 }

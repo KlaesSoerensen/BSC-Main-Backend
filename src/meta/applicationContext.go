@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"otte_main_backend/src/config"
 	db "otte_main_backend/src/database"
 )
 
@@ -10,6 +11,7 @@ type ApplicationContext struct {
 	LanguageDB    db.LanguageDB
 	PlayerDB      db.PlayerDB
 	DDH           string
+	AuthTokenName string
 }
 
 func CreateApplicationContext(colonyAssetDB db.ColonyAssetDB, languageDB db.LanguageDB, playerDB db.PlayerDB, ddh string) *ApplicationContext {
@@ -18,5 +20,6 @@ func CreateApplicationContext(colonyAssetDB db.ColonyAssetDB, languageDB db.Lang
 		LanguageDB:    languageDB,
 		PlayerDB:      playerDB,
 		DDH:           ddh,
+		AuthTokenName: config.GetOr("AUTH_TOKEN_NAME", "OTTE-Token"),
 	}
 }
