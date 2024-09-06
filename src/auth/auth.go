@@ -18,6 +18,7 @@ var errorUnauthorized error = fmt.Errorf("Unauthorized")
 func PrefixOn(appContext *meta.ApplicationContext, existingHandler func(c *fiber.Ctx, appContext *meta.ApplicationContext) error) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		if err := naiveCheckForHeaderAuth(c, appContext.AuthTokenName, appContext.DDH); err != nil {
+			c.Status(err.Code)
 			middleware.LogRequests(c)
 			return err
 		}
