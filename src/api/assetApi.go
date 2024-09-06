@@ -65,8 +65,9 @@ func getMultipleAssetsByIds(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 	}
 
 	if err != nil {
-		c.Response().Header.Set(appContext.DDH, "Error "+err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError, "Error "+err.Error())
+		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		c.Response().Header.Set(appContext.DDH, "Internal error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
 
 	c.Status(fiber.StatusOK)
@@ -95,8 +96,9 @@ func getAssetByIdHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 			c.Response().Header.Set(appContext.DDH, "No such asset")
 			return fiber.NewError(fiber.StatusNotFound, "No such asset")
 		}
-		c.Response().Header.Set(appContext.DDH, "Internal error "+err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError, "Internal error "+err.Error())
+		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		c.Response().Header.Set(appContext.DDH, "Internal error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
 
 	c.Status(fiber.StatusOK)
