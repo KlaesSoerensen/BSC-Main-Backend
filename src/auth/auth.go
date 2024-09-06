@@ -10,7 +10,7 @@ import (
 
 var errorUnauthorized error = fmt.Errorf("Unauthorized")
 
-// Prefixes an authcheck function onto the original handler function
+// Expands the original handler function's inputs (adding in the appContext) and prefixes an authcheck function.
 //
 // if the auth check fails, it assures the handler isn't run
 //
