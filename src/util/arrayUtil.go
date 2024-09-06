@@ -9,6 +9,44 @@ func ArrayMap[T any, U any](array []T, mapper func(T) U) []U {
 	return mapped
 }
 
+func ArrayFlatMap[T any, U any](array []T, mapper func(T) []U) []U {
+	var mapped = make([]U, 0, len(array))
+	for _, element := range array {
+		mapped = append(mapped, mapper(element)...)
+	}
+
+	return mapped
+}
+
+// For all those multiple conversions where an error might be returned in any one of them
+func ArrayMapKeepSecondIfPresent[T any, R any, S any](array []T, mapper func(T) (R, *S)) ([]R, *S) {
+	var mapped = make([]R, 0, len(array))
+	var retained *S
+	for _, element := range array {
+		mappedElement, maybeRetained := mapper(element)
+		if maybeRetained != nil {
+			retained = maybeRetained
+		}
+		mapped = append(mapped, mappedElement)
+	}
+
+	return mapped, retained
+}
+
+// Specifically for the error type, but otherwise the same as ArrayMapKeepSecondIfPresent
+func ArrayMapTError[T any, R any](array []T, mapper func(T) (R, error)) ([]R, error) {
+	var mapped = make([]R, 0, len(array))
+	for _, element := range array {
+		mappedElement, err := mapper(element)
+		if err != nil {
+			return nil, err
+		}
+		mapped = append(mapped, mappedElement)
+	}
+
+	return mapped, nil
+}
+
 func ArrayFilter[T any](array []T, filter func(T) bool) []T {
 	var filtered []T
 	for _, element := range array {

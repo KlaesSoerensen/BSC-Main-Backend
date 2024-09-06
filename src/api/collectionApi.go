@@ -2,6 +2,7 @@ package api
 
 import (
 	"log"
+	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
 
 	"github.com/gofiber/fiber/v2"
@@ -70,62 +71,64 @@ WHERE
 func applyCollectionApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Collection API] Applying collection API")
 
-	app.Get("/api/v1/collection/:collectionId", func(c *fiber.Ctx) error {
-		collectionId := c.Params("collectionId")
-		if collectionId == "" {
-			c.Status(fiber.StatusBadRequest)
-			return c.JSON(fiber.Map{"error": "Collection ID not provided"})
-		}
-
-		var rawResults []RawResult
-		if err := appContext.ColonyAssetDB.Raw(collectionQuery, collectionId).Scan(&rawResults).Error; err != nil {
-			c.Status(fiber.StatusInternalServerError)
-			c.Response().Header.Set(appContext.DDH, err.Error())
-			return c.Next()
-		}
-
-		// Transform the raw results into the structured response
-		response := &AssetCollectionResponse{
-			ID:      rawResults[0].AssetCollectionID,
-			Name:    rawResults[0].CollectionName,
-			Entries: []MinimizedAssetWithTransformDTO{},
-		}
-
-		entriesMap := make(map[uint32]*MinimizedAssetWithTransformDTO)
-
-		for _, raw := range rawResults {
-			// Check if we've already added this CollectionEntry
-			if _, exists := entriesMap[raw.CollectionEntryID]; !exists {
-				entriesMap[raw.CollectionEntryID] = &MinimizedAssetWithTransformDTO{
-					HasLODs: raw.HasLODs,
-					Width:   uint32(raw.Width),
-					Height:  uint32(raw.Height),
-					LODs:    []LODDetails{},
-					Transform: TransformDTO{
-						XOffset: raw.XOffset,
-						YOffset: raw.YOffset,
-						ZIndex:  raw.ZIndex,
-						XScale:  raw.XScale,
-						YScale:  raw.YScale,
-					},
-				}
-				// Add to the response entries
-				response.Entries = append(response.Entries, *entriesMap[raw.CollectionEntryID])
-			}
-
-			// Add LOD details if present
-			if raw.LODID != nil {
-				lod := LODDetails{
-					ID:          *raw.LODID,
-					DetailLevel: uint32(*raw.DetailLevel),
-				}
-				entriesMap[raw.CollectionEntryID].LODs = append(entriesMap[raw.CollectionEntryID].LODs, lod)
-			}
-		}
-
-		c.Status(fiber.StatusOK)
-		return c.JSON(response)
-	})
+	app.Get("/api/v1/collection/:collectionId", auth.PrefixOn(appContext, getCollectionByIDHandler))
 
 	return nil
+}
+
+func getCollectionByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	collectionId := c.Params("collectionId")
+	if collectionId == "" {
+		c.Status(fiber.StatusBadRequest)
+		return c.JSON(fiber.Map{"error": "Collection ID not provided"})
+	}
+
+	var rawResults []RawResult
+	if err := appContext.ColonyAssetDB.Raw(collectionQuery, collectionId).Scan(&rawResults).Error; err != nil {
+		c.Status(fiber.StatusInternalServerError)
+		c.Response().Header.Set(appContext.DDH, err.Error())
+		return c.Next()
+	}
+
+	// Transform the raw results into the structured response
+	response := &AssetCollectionResponse{
+		ID:      rawResults[0].AssetCollectionID,
+		Name:    rawResults[0].CollectionName,
+		Entries: []MinimizedAssetWithTransformDTO{},
+	}
+
+	entriesMap := make(map[uint32]*MinimizedAssetWithTransformDTO)
+
+	for _, raw := range rawResults {
+		// Check if we've already added this CollectionEntry
+		if _, exists := entriesMap[raw.CollectionEntryID]; !exists {
+			entriesMap[raw.CollectionEntryID] = &MinimizedAssetWithTransformDTO{
+				HasLODs: raw.HasLODs,
+				Width:   uint32(raw.Width),
+				Height:  uint32(raw.Height),
+				LODs:    []LODDetails{},
+				Transform: TransformDTO{
+					XOffset: raw.XOffset,
+					YOffset: raw.YOffset,
+					ZIndex:  raw.ZIndex,
+					XScale:  raw.XScale,
+					YScale:  raw.YScale,
+				},
+			}
+			// Add to the response entries
+			response.Entries = append(response.Entries, *entriesMap[raw.CollectionEntryID])
+		}
+
+		// Add LOD details if present
+		if raw.LODID != nil {
+			lod := LODDetails{
+				ID:          *raw.LODID,
+				DetailLevel: uint32(*raw.DetailLevel),
+			}
+			entriesMap[raw.CollectionEntryID].LODs = append(entriesMap[raw.CollectionEntryID].LODs, lod)
+		}
+	}
+
+	c.Status(fiber.StatusOK)
+	return c.JSON(response)
 }

@@ -19,7 +19,7 @@ func PrefixOn(appContext *meta.ApplicationContext, existingHandler func(c *fiber
 	return func(c *fiber.Ctx) error {
 		if err := naiveCheckForHeaderAuth(c, appContext.AuthTokenName, appContext.DDH); err != nil {
 			middleware.LogRequests(c)
-			return nil
+			return err
 		}
 		handlerErr := existingHandler(c, appContext)
 		middleware.LogRequests(c)
@@ -27,12 +27,13 @@ func PrefixOn(appContext *meta.ApplicationContext, existingHandler func(c *fiber
 	}
 }
 
-func naiveCheckForHeaderAuth(context *fiber.Ctx, tokenName string, defaultDebugHeader string) error {
+var ErrorUnauthorized *fiber.Error = fiber.NewError(401, errorUnauthorized.Error())
+
+func naiveCheckForHeaderAuth(context *fiber.Ctx, tokenName string, defaultDebugHeader string) *fiber.Error {
 	authHeaderContent := context.Request().Header.Peek(tokenName)
 	if len(authHeaderContent) == 0 {
 		context.Response().Header.Set(defaultDebugHeader, "Missing auth header, expected "+tokenName+" to be present")
-		context.Status(401)
-		return errorUnauthorized
+		return ErrorUnauthorized
 	}
 
 	return nil
