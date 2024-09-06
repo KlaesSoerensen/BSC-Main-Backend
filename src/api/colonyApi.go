@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func applyColonyApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Colony API] Applying colony API")
 
 	return nil

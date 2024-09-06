@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func ApplyAuth(app *fiber.App, appContext meta.ApplicationContext) error {
+func ApplyAuth(app *fiber.App, appContext *meta.ApplicationContext) error {
 	authTokenName, err := config.LoudGet("AUTH_TOKEN_NAME")
 	if err != nil {
 		return err

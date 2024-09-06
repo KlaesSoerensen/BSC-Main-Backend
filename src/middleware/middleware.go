@@ -10,7 +10,7 @@ import (
 	"otte_main_backend/src/meta"
 )
 
-func ApplyTo(app *fiber.App, appContext meta.ApplicationContext) error {
+func ApplyTo(app *fiber.App, appContext *meta.ApplicationContext) error {
 	if err := ApplyAuth(app, appContext); err != nil {
 		return err
 	}

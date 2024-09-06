@@ -13,7 +13,7 @@ type LODResponse struct {
 	Blob        []byte `json:"blob"`
 }
 
-func applyLodApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyLodApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[LOD API] Applying LOD API")
 
 	return nil

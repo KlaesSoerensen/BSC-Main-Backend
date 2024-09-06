@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"otte_main_backend/src/meta"
+	"otte_main_backend/src/util"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -48,7 +49,7 @@ type PlayerPreferencesResponse struct {
 }
 
 // Apply the Player API routes
-func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Player API] Applying Player API")
 
 	// Route for fetching a single player's info by their ID
@@ -57,7 +58,8 @@ func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
 		playerId, err := strconv.Atoi(playerIdStr)
 		if err != nil {
 			c.Status(fiber.StatusBadRequest)
-			return c.JSON(fiber.Map{"error": "Invalid player ID"})
+			c.Response().Header.Set(appContext.DDH, "Invalid player ID "+err.Error())
+			return c.Next()
 		}
 
 		// Fetch player information from the database
@@ -71,35 +73,16 @@ func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.Status(fiber.StatusNotFound)
-				return c.JSON(fiber.Map{"error": "Player not found"})
+				c.Response().Header.Set(appContext.DDH, "Player not found "+err.Error())
+				return c.Next()
 			}
 			c.Status(fiber.StatusInternalServerError)
-			return c.JSON(fiber.Map{"error": "Internal server error"})
+			c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
+			return c.Next()
 		}
 
 		// Compute the 'HasCompletedTutorial' field
-		var tutorialCompletedCount int64
-		err = appContext.PlayerDB.
-			Table("Achievement").
-			Where("player = ? AND title = ?", playerId, "Tutorial Completed"). // Assuming "Tutorial Completed" is the title of the tutorial achievement
-			Count(&tutorialCompletedCount).Error
-		if err != nil {
-			c.Status(fiber.StatusInternalServerError)
-			return c.JSON(fiber.Map{"error": "Failed to check tutorial completion status"})
-		}
-		player.HasCompletedTutorial = tutorialCompletedCount > 0
-
-		// Fetch achievements for the player
-		err = appContext.PlayerDB.
-			Table("Achievement").
-			Select("id").
-			Where("player = ?", playerId).
-			Pluck("id", &player.Achievements).Error
-
-		if err != nil {
-			c.Status(fiber.StatusInternalServerError)
-			return c.JSON(fiber.Map{"error": "Failed to fetch achievements"})
-		}
+		player.HasCompletedTutorial = util.ArrayContains(player.Achievements, 1)
 
 		c.Status(fiber.StatusOK)
 		return c.JSON(player)
@@ -111,7 +94,8 @@ func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
 		playerId, err := strconv.Atoi(playerIdStr)
 		if err != nil {
 			c.Status(fiber.StatusBadRequest)
-			return c.JSON(fiber.Map{"error": "Invalid player ID"})
+			c.Response().Header.Set(appContext.DDH, "Invalid player ID "+err.Error())
+			return c.Next()
 		}
 
 		// Fetch player preferences and join them with available values
@@ -133,10 +117,12 @@ func applyPlayerApi(app *fiber.App, appContext meta.ApplicationContext) error {
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.Status(fiber.StatusNotFound)
-				return c.JSON(fiber.Map{"error": "Preferences not found"})
+				c.Response().Header.Set(appContext.DDH, "Preferences not found "+err.Error())
+				return c.Next()
 			}
 			c.Status(fiber.StatusInternalServerError)
-			return c.JSON(fiber.Map{"error": "Internal server error"})
+			c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
+			return c.Next()
 		}
 
 		// Return the preferences in a structured format

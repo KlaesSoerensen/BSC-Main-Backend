@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func applySessionApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applySessionApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Session API] Applying session API")
 
 	return nil

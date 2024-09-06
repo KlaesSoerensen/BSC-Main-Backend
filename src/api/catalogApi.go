@@ -10,7 +10,7 @@ import (
 
 type InternationalizationCatalogue = map[string]string
 
-func applyCatalog(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyCatalog(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Catalog API] Applying catalog API")
 
 	app.Get("/api/v1/catalog/:language", func(c *fiber.Ctx) error {

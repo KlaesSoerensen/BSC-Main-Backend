@@ -27,12 +27,7 @@ func main() {
 	if dbErr != nil {
 		panic(dbErr)
 	}
-	var context = meta.ApplicationContext{
-		ColonyAssetDB: colonyDB,
-		LanguageDB:    languageDB,
-		PlayerDB:      playerDB,
-		DDH:           config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"),
-	}
+	var context = meta.CreateApplicationContext(colonyDB, languageDB, playerDB, config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"))
 
 	app := fiber.New()
 	if middlewareErr := middleware.ApplyTo(app, context); middlewareErr != nil {

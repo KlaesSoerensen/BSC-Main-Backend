@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func ApplyEndpoints(app *fiber.App, appContext meta.ApplicationContext) error {
+func ApplyEndpoints(app *fiber.App, appContext *meta.ApplicationContext) error {
 	if err := applyCatalog(app, appContext); err != nil {
 		return err
 	}

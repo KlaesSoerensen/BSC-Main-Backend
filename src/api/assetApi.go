@@ -28,7 +28,7 @@ type AssetResponse struct {
 type MultiAssetResponse []AssetResponse
 
 // Apply the asset API routes
-func applyAssetApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyAssetApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Asset API] Applying asset API")
 
 	app.Get("/api/v1/asset/:assetId", func(c *fiber.Ctx) error {
@@ -37,12 +37,9 @@ func applyAssetApi(app *fiber.App, appContext meta.ApplicationContext) error {
 
 		if parsingError != nil {
 			c.Status(fiber.StatusBadRequest)
-			return c.SendString("Invalid ID format")
-		}
-
-		if id == 0 {
-			c.Status(fiber.StatusNotFound)
-			return c.JSON(fiber.Map{"error": "Record not found"})
+			return c.JSON(fiber.Map{
+				"error": "Invalid ID format",
+			})
 		}
 
 		var dto AssetResponse
@@ -56,11 +53,14 @@ func applyAssetApi(app *fiber.App, appContext meta.ApplicationContext) error {
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.Status(fiber.StatusNotFound)
-				return c.JSON(fiber.Map{"error": "Record not found"})
+				return c.JSON(fiber.Map{
+					"error": "Record not found",
+				})
 			}
-
 			c.Status(fiber.StatusInternalServerError)
-			return c.JSON(fiber.Map{"error": "Internal server error"})
+			return c.JSON(fiber.Map{
+				"error": "Internal server error: " + err.Error(),
+			})
 		}
 
 		c.Status(fiber.StatusOK)
@@ -76,7 +76,9 @@ func applyAssetApi(app *fiber.App, appContext meta.ApplicationContext) error {
 			id, err := strconv.Atoi(idStr)
 			if err != nil {
 				c.Status(fiber.StatusBadRequest)
-				return c.SendString("Invalid ID format")
+				return c.JSON(fiber.Map{
+					"error": "Invalid ID format",
+				})
 			}
 			ids[i] = id
 		}
@@ -92,11 +94,15 @@ func applyAssetApi(app *fiber.App, appContext meta.ApplicationContext) error {
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.Status(fiber.StatusNotFound)
-				return c.JSON(fiber.Map{"error": "Records not found"})
+				return c.JSON(fiber.Map{
+					"error": "Records not found",
+				})
 			}
 
 			c.Status(fiber.StatusInternalServerError)
-			return c.JSON(fiber.Map{"error": "Internal server error"})
+			return c.JSON(fiber.Map{
+				"error": "Internal server error: " + err.Error(),
+			})
 		}
 
 		c.Status(fiber.StatusOK)
