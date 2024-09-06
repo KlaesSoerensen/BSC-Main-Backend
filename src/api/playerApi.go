@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql/driver"
 	"errors"
 	"log"
 	"otte_main_backend/src/auth"
@@ -10,22 +9,8 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
-
-// StringArray is a custom type to handle PostgreSQL arrays.
-type StringArray []string
-
-// Scan implements the Scanner interface for StringArray.
-func (a *StringArray) Scan(value interface{}) error {
-	return pq.Array(a).Scan(value)
-}
-
-// Value implements the Valuer interface for StringArray.
-func (a StringArray) Value() (driver.Value, error) {
-	return pq.Array(a).Value()
-}
 
 // PlayerInfoResponse represents the data returned for a player's basic information.
 type PlayerInfoResponse struct {
@@ -38,10 +23,10 @@ type PlayerInfoResponse struct {
 
 // PlayerPreference represents a single preference item.
 type PlayerPreference struct {
-	ID              uint32      `json:"id"`
-	Key             string      `json:"key"`
-	ChosenValue     string      `json:"chosenValue"`
-	AvailableValues StringArray `json:"availableValues"` // Use the custom array type
+	ID              uint32             `json:"id"`
+	PreferenceKey   string             `json:"key"`
+	ChosenValue     string             `json:"chosenValue"`
+	AvailableValues util.PGStringArray `json:"availableValues"` // Use the custom array type
 }
 
 // PlayerPreferencesResponse represents the data returned for a player's preferences.
@@ -64,29 +49,26 @@ func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 
 func getPlayerPreferencesHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
 	playerIdStr := c.Params("playerId")
-	playerId, err := strconv.Atoi(playerIdStr)
-	if err != nil {
-		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+err.Error())
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID "+err.Error())
+	playerId, parseErr := strconv.Atoi(playerIdStr)
+	if parseErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+parseErr.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID "+parseErr.Error())
 	}
 
 	// Fetch player preferences and join them with available values
 	var preferences []PlayerPreference
-	err = appContext.PlayerDB.
+	if err := appContext.PlayerDB.
 		Table(`PlayerPreference`).
-		Select(`
-		"PlayerPreference".id,
-		"PlayerPreference"."preferenceKey",
-		"PlayerPreference"."chosenValue",
-		"AvailablePreference"."availableValues"
-	`).
-		Joins(`
-		JOIN "AvailablePreference" ON "PlayerPreference"."preferenceKey" = "AvailablePreference"."preferenceKey"
-	`).
 		Where(`"PlayerPreference".player = ?`, playerId).
-		Scan(&preferences).Error
+		Select(`
+			"PlayerPreference".id,
+			"PlayerPreference"."preferenceKey",
+			"PlayerPreference"."chosenValue",
+			"AvailablePreference"."availableValues"`).
+		Joins(`
+			JOIN "AvailablePreference" ON "PlayerPreference"."preferenceKey" = "AvailablePreference"."preferenceKey"`).
+		Find(&preferences).Error; err != nil {
 
-	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Response().Header.Set(appContext.DDH, "Preferences not found "+err.Error())
 			return fiber.NewError(fiber.StatusNotFound, "Preferences not found "+err.Error())
