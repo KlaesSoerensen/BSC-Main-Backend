@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"log"
+	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/util"
 	"strconv"
@@ -28,11 +29,11 @@ func (a StringArray) Value() (driver.Value, error) {
 
 // PlayerInfoResponse represents the data returned for a player's basic information.
 type PlayerInfoResponse struct {
-	ID                   uint32   `json:"id"`
-	IGN                  string   `json:"IGN"`
-	Sprite               uint32   `json:"sprite"`
-	Achievements         []uint32 `json:"achievements"`
-	HasCompletedTutorial bool     `json:"hasCompletedTutorial"`
+	ID                   uint32          `json:"id"`
+	IGN                  string          `json:"IGN"`
+	Sprite               uint32          `json:"sprite"`
+	Achievements         util.PGIntArray `json:"achievements"`
+	HasCompletedTutorial bool            `json:"hasCompletedTutorial"`
 }
 
 // PlayerPreference represents a single preference item.
@@ -53,84 +54,85 @@ func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Player API] Applying Player API")
 
 	// Route for fetching a single player's info by their ID
-	app.Get("/api/v1/player/:playerId", func(c *fiber.Ctx) error {
-		playerIdStr := c.Params("playerId")
-		playerId, err := strconv.Atoi(playerIdStr)
-		if err != nil {
-			c.Status(fiber.StatusBadRequest)
-			c.Response().Header.Set(appContext.DDH, "Invalid player ID "+err.Error())
-			return c.Next()
-		}
-
-		// Fetch player information from the database
-		var player PlayerInfoResponse
-		err = appContext.PlayerDB.
-			Table("Player").
-			Select(`id, "IGN", sprite`).
-			Where("id = ?", playerId).
-			Scan(&player).Error
-
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.Status(fiber.StatusNotFound)
-				c.Response().Header.Set(appContext.DDH, "Player not found "+err.Error())
-				return c.Next()
-			}
-			c.Status(fiber.StatusInternalServerError)
-			c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
-			return c.Next()
-		}
-
-		// Compute the 'HasCompletedTutorial' field
-		player.HasCompletedTutorial = util.ArrayContains(player.Achievements, 1)
-
-		c.Status(fiber.StatusOK)
-		return c.JSON(player)
-	})
+	app.Get("/api/v1/player/:playerId", auth.PrefixOn(appContext, getPlayerInfoHandler))
 
 	// Route for fetching a player's preferences by their ID
-	app.Get("/api/v1/player/:playerId/preferences", func(c *fiber.Ctx) error {
-		playerIdStr := c.Params("playerId")
-		playerId, err := strconv.Atoi(playerIdStr)
-		if err != nil {
-			c.Status(fiber.StatusBadRequest)
-			c.Response().Header.Set(appContext.DDH, "Invalid player ID "+err.Error())
-			return c.Next()
-		}
-
-		// Fetch player preferences and join them with available values
-		var preferences []PlayerPreference
-		err = appContext.PlayerDB.
-			Table(`PlayerPreference`).
-			Select(`
-            "PlayerPreference".id,
-            "PlayerPreference"."preferenceKey",
-            "PlayerPreference"."chosenValue",
-            "AvailablePreference"."availableValues"
-        `).
-			Joins(`
-            JOIN "AvailablePreference" ON "PlayerPreference"."preferenceKey" = "AvailablePreference"."preferenceKey"
-        `).
-			Where(`"PlayerPreference".player = ?`, playerId).
-			Scan(&preferences).Error
-
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.Status(fiber.StatusNotFound)
-				c.Response().Header.Set(appContext.DDH, "Preferences not found "+err.Error())
-				return c.Next()
-			}
-			c.Status(fiber.StatusInternalServerError)
-			c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
-			return c.Next()
-		}
-
-		// Return the preferences in a structured format
-		response := PlayerPreferencesResponse{Preferences: preferences}
-
-		c.Status(fiber.StatusOK)
-		return c.JSON(response)
-	})
+	app.Get("/api/v1/player/:playerId/preferences", auth.PrefixOn(appContext, getPlayerPreferencesHandler))
 
 	return nil
+}
+
+func getPlayerPreferencesHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	playerIdStr := c.Params("playerId")
+	playerId, err := strconv.Atoi(playerIdStr)
+	if err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID "+err.Error())
+	}
+
+	// Fetch player preferences and join them with available values
+	var preferences []PlayerPreference
+	err = appContext.PlayerDB.
+		Table(`PlayerPreference`).
+		Select(`
+		"PlayerPreference".id,
+		"PlayerPreference"."preferenceKey",
+		"PlayerPreference"."chosenValue",
+		"AvailablePreference"."availableValues"
+	`).
+		Joins(`
+		JOIN "AvailablePreference" ON "PlayerPreference"."preferenceKey" = "AvailablePreference"."preferenceKey"
+	`).
+		Where(`"PlayerPreference".player = ?`, playerId).
+		Scan(&preferences).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Preferences not found "+err.Error())
+			return fiber.NewError(fiber.StatusNotFound, "Preferences not found "+err.Error())
+		}
+		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		c.Response().Header.Set(appContext.DDH, "Internal server error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	// Return the preferences in a structured format
+	response := PlayerPreferencesResponse{Preferences: preferences}
+
+	c.Status(fiber.StatusOK)
+	return c.JSON(response)
+}
+
+func getPlayerInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	playerIdStr := c.Params("playerId")
+	playerId, parseErr := strconv.Atoi(playerIdStr)
+	if parseErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+parseErr.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID "+parseErr.Error())
+	}
+
+	// Fetch player information from the database
+	var player PlayerInfoResponse
+	if err := appContext.PlayerDB.
+		Table("Player").
+		Select(`id, "IGN", sprite, achievements`).
+		Where("id = ?", playerId).
+		First(&player).Error; err != nil {
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Player not found "+err.Error())
+			return fiber.NewError(fiber.StatusNotFound, "Player not found "+err.Error())
+		}
+
+		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		c.Response().Header.Set(appContext.DDH, "Internal server error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	// Compute the 'HasCompletedTutorial' field
+	// Achievement id 1 is always the tutorial achievement
+	player.HasCompletedTutorial = util.ArrayContains(player.Achievements, 1)
+
+	c.Status(fiber.StatusOK)
+	return c.JSON(player)
 }

@@ -53,31 +53,31 @@ func getCatalogueForLanguageHandler(c *fiber.Ctx, appContext *meta.ApplicationCo
 	}
 	//Statuscode set by getFullCatalogueForLanguage or getCatalogueForSpecificKeys
 	// Convert the results into a map
-	json := make(map[string]string)
+	asMap := make(map[string]string)
 	for _, result := range data {
-		json[result.Key] = result.Value
+		asMap[result.Key] = result.Value
 	}
 
 	c.Status(fiber.StatusOK)
-	return c.JSON(json)
+	return c.JSON(asMap)
 }
 
 // Also sets headers and status code on ctx if present
 func getFullCatalogueForLanguage(language string, appContext *meta.ApplicationContext, ctx *fiber.Ctx, dest *[]CatalogueEntry) *fiber.Error {
-	log.Printf("[delete me] Executing query for language: %s", language)
 	if dbErr := appContext.LanguageDB.
 		Table("Catalogue").
 		//This alias is needed as GORM matches on the struct field name, which is dynamic in this case
 		Select("key, \"" + language + "\" AS value").
-		Scan(dest).Error; dbErr != nil {
+		Find(dest).Error; dbErr != nil {
 
 		if errors.Is(dbErr, gorm.ErrRecordNotFound) {
 			ctx.Response().Header.Set(appContext.DDH, "No such language catalogue found")
 			return fiber.NewError(fiber.StatusNotFound, "No such language catalogue found")
 		}
 
-		ctx.Response().Header.Set(appContext.DDH, "Internal error "+dbErr.Error())
-		return fiber.NewError(fiber.StatusInternalServerError, "Internal error "+dbErr.Error())
+		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		ctx.Response().Header.Set(appContext.DDH, "Internal error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
 	ctx.Status(fiber.StatusOK)
 	return nil
@@ -85,21 +85,21 @@ func getFullCatalogueForLanguage(language string, appContext *meta.ApplicationCo
 
 // Also sets headers and status code on ctx if present
 func getCatalogueForSpecificKeys(language string, keys []string, appContext *meta.ApplicationContext, ctx *fiber.Ctx, dest *[]CatalogueEntry) *fiber.Error {
-	log.Printf("[delete me] Executing query for language: %s, keys: %v", language, keys)
 	if dbErr := appContext.LanguageDB.
 		Table("Catalogue").
 		//This alias is needed as GORM matches on the struct field name, which is dynamic in this case
 		Select("key, \""+language+"\" AS value").
 		Where("key IN ?", keys).
-		Scan(dest).Error; dbErr != nil {
+		Find(dest).Error; dbErr != nil {
 
 		if errors.Is(dbErr, gorm.ErrRecordNotFound) {
 			ctx.Response().Header.Set(appContext.DDH, "No such language catalogue found")
 			return fiber.NewError(fiber.StatusNotFound, "No such language catalogue found")
 		}
 
-		ctx.Response().Header.Set(appContext.DDH, "Internal error "+dbErr.Error())
-		return fiber.NewError(fiber.StatusInternalServerError, "Internal error "+dbErr.Error())
+		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		ctx.Response().Header.Set(appContext.DDH, "Internal error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
 	ctx.Status(fiber.StatusOK)
 	return nil

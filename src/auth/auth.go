@@ -23,6 +23,12 @@ func PrefixOn(appContext *meta.ApplicationContext, existingHandler func(c *fiber
 			return err
 		}
 		handlerErr := existingHandler(c, appContext)
+		if fiberErr, ok := handlerErr.(*fiber.Error); ok {
+			c.Status(fiberErr.Code)
+		} else if handlerErr != nil {
+			// Handle other errors
+			fmt.Printf("Unknown handler error occurred: %v\n", handlerErr)
+		}
 		middleware.LogRequests(c)
 		return handlerErr
 	}
