@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func applyLocationApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyLocationApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Location API] Applying location API")
 
 	return nil

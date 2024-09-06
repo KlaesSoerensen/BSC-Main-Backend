@@ -11,3 +11,12 @@ type ApplicationContext struct {
 	PlayerDB      db.PlayerDB
 	DDH           string
 }
+
+func CreateApplicationContext(colonyAssetDB db.ColonyAssetDB, languageDB db.LanguageDB, playerDB db.PlayerDB, ddh string) *ApplicationContext {
+	return &ApplicationContext{
+		ColonyAssetDB: colonyAssetDB,
+		LanguageDB:    languageDB,
+		PlayerDB:      playerDB,
+		DDH:           ddh,
+	}
+}

@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func applyMinigameApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyMinigameApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Minigame API] Applying Minigame API")
 
 	return nil

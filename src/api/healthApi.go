@@ -17,7 +17,7 @@ type ServiceStatus struct {
 	Timestamp            string `json:"timestamp"`
 }
 
-func applyHealthApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyHealthApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Health API] Applying health API")
 
 	app.Get("/api/v1", func(c *fiber.Ctx) error {

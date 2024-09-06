@@ -67,7 +67,7 @@ LEFT JOIN
 WHERE 
 	ac.id = ?`
 
-func applyCollectionApi(app *fiber.App, appContext meta.ApplicationContext) error {
+func applyCollectionApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Collection API] Applying collection API")
 
 	app.Get("/api/v1/collection/:collectionId", func(c *fiber.Ctx) error {
