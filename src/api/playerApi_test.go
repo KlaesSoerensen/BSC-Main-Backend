@@ -6,6 +6,8 @@ import (
 
 	"net/http"
 
+	"fmt"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gofiber/fiber/v2"
 	"github.com/lib/pq"
@@ -16,6 +18,11 @@ import (
 // Utility function to test a request and check response
 func testPlayerRequest(t *testing.T, app *fiber.App, method, path string, expectedStatusCode int) (*http.Response, error) {
 	req := httptest.NewRequest(method, path, nil)
+	req.Header.Set("OTTE-Token", "OTTE-Token") // Set OTTE-Token for authentication
+
+	// Log the request headers for debugging
+	fmt.Printf("Request Headers: %v\n", req.Header)
+
 	resp, err := app.Test(req)
 
 	if err != nil {

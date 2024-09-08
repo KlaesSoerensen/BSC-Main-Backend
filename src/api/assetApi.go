@@ -16,15 +16,17 @@ import (
 
 // DTO's
 type AssetResponse struct {
-	ID      uint32       `json:"id"`
-	UseCase string       `json:"useCase"`
-	Type    string       `json:"type"`
-	Width   uint32       `json:"width"`
-	Height  uint32       `json:"height"`
-	HasLODs bool         `json:"hasLODs"`
-	Blob    []byte       `json:"blob"`
-	Alias   string       `json:"alias"`
-	LODs    []LODDetails `json:"LODs" gorm:"foreignKey:GraphicalAsset"`
+	ID          uint32 `json:"id"`
+	UseCase     string `json:"useCase"`
+	Type        string `json:"type"`
+	Width       uint32 `json:"width"`
+	Height      uint32 `json:"height"`
+	HasLODs     bool   `json:"hasLODs"`
+	Blob        []byte `json:"blob"`
+	Alias       string `json:"alias"`
+	LODID       uint32 `json:"lod_id"`       // Matches "LOD".id
+	DetailLevel string `json:"detail_level"` // Matches "LOD".detailLevel
+	LODBlob     []byte `json:"lod_blob"`     // Matches "LOD".blob
 }
 
 type MultiAssetResponse []AssetResponse
@@ -53,19 +55,19 @@ func getMultipleAssetsByIds(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 	var assets []AssetResponse
 	err := appContext.ColonyAssetDB.
 		Table("GraphicalAsset").
-		Select(`"GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob`).
+		Select(`"GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob`).
 		Where(`"GraphicalAsset".id IN ?`, ids).
 		Joins(`LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id`).
 		Find(&assets).Error
 
-	// This check gotta go first this time since the query is for any amount of rows (which includes 0 as a valid amount)
+	// This check goes first since the query is for any amount of rows (including 0 as a valid amount)
 	if errors.Is(err, gorm.ErrRecordNotFound) || len(assets) == 0 {
 		c.Response().Header.Set(appContext.DDH, "No such assets")
 		return fiber.NewError(fiber.StatusNotFound, "No such assets")
 	}
 
 	if err != nil {
-		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		// Gorm exposes secrets in err when DB is down, so it can't be included in the response
 		c.Response().Header.Set(appContext.DDH, "Internal error")
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
@@ -86,7 +88,7 @@ func getAssetByIdHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 	var dto AssetResponse
 	err := appContext.ColonyAssetDB.
 		Table("GraphicalAsset").
-		Select(`"GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob`).
+		Select(`"GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob`).
 		Where(`"GraphicalAsset".id = ?`, id).
 		Joins(`LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id`).
 		First(&dto).Error
@@ -96,7 +98,7 @@ func getAssetByIdHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 			c.Response().Header.Set(appContext.DDH, "No such asset")
 			return fiber.NewError(fiber.StatusNotFound, "No such asset")
 		}
-		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		// Gorm exposes secrets in err when DB is down, so it can't be included in the response
 		c.Response().Header.Set(appContext.DDH, "Internal error")
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
