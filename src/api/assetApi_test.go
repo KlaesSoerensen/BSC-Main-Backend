@@ -8,6 +8,8 @@ import (
 
 	"net/http"
 
+	"fmt"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
@@ -49,6 +51,11 @@ func setupTest(t *testing.T) (sqlmock.Sqlmock, *fiber.App, *meta.ApplicationCont
 // Utility function to test a request and check response
 func testRequest(t *testing.T, app *fiber.App, method, path string, expectedStatusCode int) (*http.Response, error) {
 	req := httptest.NewRequest(method, path, nil)
+	req.Header.Set("OTTE-Token", "OTTE-Token") // Set OTTE-Token for authentication
+
+	// Log the request headers for debugging
+	fmt.Printf("Request Headers: %v\n", req.Header)
+
 	resp, err := app.Test(req)
 
 	if err != nil {
@@ -69,24 +76,29 @@ func checkMockExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 func TestGetAssetByID(t *testing.T) {
 	mock, app, _ := setupTest(t)
 
-	rows := sqlmock.NewRows([]string{"id", "alias", "type", "width", "height", "hasLODs"}).
-		AddRow(1, "Test Asset", "image/png", 100, 100, false)
+	// Mocking the expected row
+	rows := sqlmock.NewRows([]string{"id", "alias", "type", "width", "height", "hasLODs", "id", "detailLevel", "blob"}).
+		AddRow(1, "Test Asset", "image/png", 100, 100, false, 1, "high", nil)
 
-	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
-		WithArgs(1, 1).
+	// Exact SQL query expected without aliases
+	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
+		WithArgs(1, 1). // Ensure arguments match
 		WillReturnRows(rows)
 
+	// Make the request
 	_, err := testRequest(t, app, "GET", "/api/v1/asset/1", 200)
 	if err != nil {
 		t.Fatalf("Failed to process the request: %v", err)
 	}
+
+	// Check mock expectations
 	checkMockExpectations(t, mock)
 }
 
 func TestNonexistentItem(t *testing.T) {
 	mock, app, _ := setupTest(t)
 
-	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
+	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
 		WithArgs(999, 1).
 		WillReturnError(gorm.ErrRecordNotFound)
 
@@ -101,7 +113,7 @@ func TestNonexistentItem(t *testing.T) {
 func TestEmptyDatabase(t *testing.T) {
 	mock, app, _ := setupTest(t)
 
-	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
+	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
 		WithArgs(1, 1).
 		WillReturnError(gorm.ErrRecordNotFound)
 
@@ -116,7 +128,7 @@ func TestEmptyDatabase(t *testing.T) {
 func TestDatabaseConnectionError(t *testing.T) {
 	mock, app, _ := setupTest(t)
 
-	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
+	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
 		WithArgs(1, 1).
 		WillReturnError(errors.New("connection error"))
 
@@ -131,7 +143,7 @@ func TestDatabaseConnectionError(t *testing.T) {
 func TestUnexpectedServerError(t *testing.T) {
 	mock, app, _ := setupTest(t)
 
-	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
+	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id = \$1 ORDER BY "GraphicalAsset"."id" LIMIT \$2`).
 		WithArgs(1, 1).
 		WillReturnError(errors.New("unexpected error"))
 
@@ -155,7 +167,7 @@ func TestInvalidMultipleAssetIDs(t *testing.T) {
 func TestNonexistentMultipleAssets(t *testing.T) {
 	mock, app, _ := setupTest(t)
 
-	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id as lod_id, "LOD"."detailLevel" as detail_level, "LOD".blob as lod_blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id IN \(\$1,\$2\)`).
+	mock.ExpectQuery(`SELECT "GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob FROM "GraphicalAsset" LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id WHERE "GraphicalAsset".id IN \(\$1,\$2\)`).
 		WithArgs(999, 1000).
 		WillReturnError(gorm.ErrRecordNotFound)
 
