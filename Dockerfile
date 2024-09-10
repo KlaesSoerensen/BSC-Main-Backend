@@ -22,8 +22,5 @@ ARG _containerAlias="otteBackendService"
 # Compile - builds executable
 RUN ["go", "build", "-o", "$_containerAlias", "./src"]
 
-# Expose port 8889
-EXPOSE 8889
-
 # Run the executable
 CMD [ "./$_containerAlias", "--prod" ]
