@@ -16,17 +16,15 @@ import (
 
 // DTO's
 type AssetResponse struct {
-	ID          uint32 `json:"id"`
-	UseCase     string `json:"useCase"`
-	Type        string `json:"type"`
-	Width       uint32 `json:"width"`
-	Height      uint32 `json:"height"`
-	HasLODs     bool   `json:"hasLODs"`
-	Blob        []byte `json:"blob"`
-	Alias       string `json:"alias"`
-	LODID       uint32 `json:"lod_id"`       // Matches "LOD".id
-	DetailLevel string `json:"detail_level"` // Matches "LOD".detailLevel
-	LODBlob     []byte `json:"lod_blob"`     // Matches "LOD".blob
+	ID      uint32       `json:"id"`
+	UseCase string       `json:"useCase"`
+	Type    string       `json:"type"`
+	Width   uint32       `json:"width"`
+	Height  uint32       `json:"height"`
+	HasLODs bool         `json:"hasLODs"`
+	Blob    []byte       `json:"blob"`
+	Alias   string       `json:"alias"`
+	LODs    []LODDetails `json:"LODs" gorm:"foreignKey:GraphicalAsset;references:ID"`
 }
 
 type MultiAssetResponse []AssetResponse
@@ -55,9 +53,8 @@ func getMultipleAssetsByIds(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 	var assets []AssetResponse
 	err := appContext.ColonyAssetDB.
 		Table("GraphicalAsset").
-		Select(`"GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob`).
+		Preload("LODs"). // Preload the LODs field for each asset
 		Where(`"GraphicalAsset".id IN ?`, ids).
-		Joins(`LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id`).
 		Find(&assets).Error
 
 	// This check goes first since the query is for any amount of rows (including 0 as a valid amount)
@@ -72,7 +69,12 @@ func getMultipleAssetsByIds(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
 	}
 
-	c.Status(fiber.StatusOK)
+	if len(assets) != len(ids) {
+		c.Response().Header.Set(appContext.DDH, "Some assets were not found")
+		c.Status(fiber.StatusPartialContent)
+	} else {
+		c.Status(fiber.StatusOK)
+	}
 	return c.JSON(assets)
 }
 
@@ -88,9 +90,8 @@ func getAssetByIdHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 	var dto AssetResponse
 	err := appContext.ColonyAssetDB.
 		Table("GraphicalAsset").
-		Select(`"GraphicalAsset".*, "LOD".id, "LOD"."detailLevel", "LOD".blob`).
+		Preload("LODs"). // Preload the LODs field using the foreign key
 		Where(`"GraphicalAsset".id = ?`, id).
-		Joins(`LEFT JOIN "LOD" on "LOD"."graphicalAsset" = "GraphicalAsset".id`).
 		First(&dto).Error
 
 	if err != nil {

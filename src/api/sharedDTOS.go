@@ -2,8 +2,12 @@ package api
 
 type LODDetails struct {
 	ID             uint32 `json:"id"`
-	DetailLevel    uint32 `json:"detailLevel"`
-	GraphicalAsset uint32 `json:"graphicalAsset"`
+	DetailLevel    uint32 `json:"detailLevel" gorm:"detailLevel"`
+	GraphicalAsset uint32 `json:"graphicalAsset" gorm:"column:graphicalAsset"`
+}
+
+func (l LODDetails) TableName() string {
+	return "LOD"
 }
 
 type TransformDTO struct {
