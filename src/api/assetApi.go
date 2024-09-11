@@ -17,11 +17,11 @@ import (
 // DTO's
 type AssetResponse struct {
 	ID      uint32       `json:"id"`
-	UseCase string       `json:"useCase"`
+	UseCase string       `json:"useCase" gorm:"column:useCase"`
 	Type    string       `json:"type"`
 	Width   uint32       `json:"width"`
 	Height  uint32       `json:"height"`
-	HasLODs bool         `json:"hasLODs"`
+	HasLODs bool         `json:"hasLODs" gorm:"column:hasLODs"`
 	Blob    []byte       `json:"blob"`
 	Alias   string       `json:"alias"`
 	LODs    []LODDetails `json:"LODs" gorm:"foreignKey:GraphicalAsset;references:ID"`
@@ -53,7 +53,7 @@ func getMultipleAssetsByIds(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 	var assets []AssetResponse
 	err := appContext.ColonyAssetDB.
 		Table("GraphicalAsset").
-		Preload("LODs"). // Preload the LODs field for each asset
+		Preload("LODs"). // Preload the LODs field for each asset, can be optimized as this fetches the blob too, which superfluous
 		Where(`"GraphicalAsset".id IN ?`, ids).
 		Find(&assets).Error
 
