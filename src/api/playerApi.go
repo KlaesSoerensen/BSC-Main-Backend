@@ -24,9 +24,9 @@ type PlayerInfoResponse struct {
 // PlayerPreference represents a single preference item.
 type PlayerPreference struct {
 	ID              uint32             `json:"id"`
-	PreferenceKey   string             `json:"key"`
-	ChosenValue     string             `json:"chosenValue"`
-	AvailableValues util.PGStringArray `json:"availableValues"` // Use the custom array type
+	PreferenceKey   string             `json:"key" gorm:"column:preferenceKey"`
+	ChosenValue     string             `json:"chosenValue" gorm:"column:chosenValue"`
+	AvailableValues util.PGStringArray `json:"availableValues" gorm:"column:availableValues"` // Use the custom array type
 }
 
 // PlayerPreferencesResponse represents the data returned for a player's preferences.
