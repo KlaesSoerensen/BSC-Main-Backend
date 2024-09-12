@@ -2,7 +2,7 @@ package api
 
 type LODDetails struct {
 	ID             uint32 `json:"id"`
-	DetailLevel    uint32 `json:"detailLevel" gorm:"detailLevel"`
+	DetailLevel    uint32 `json:"detailLevel" gorm:"column:detailLevel"`
 	GraphicalAsset uint32 `json:"graphicalAsset" gorm:"column:graphicalAsset"`
 }
 
