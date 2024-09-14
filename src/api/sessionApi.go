@@ -37,7 +37,7 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 	var player PlayerDTO
 	var idOfPreviousSession int = -1
 	//Check if player exists in PlayerDB - if so, all is well
-	if err := appContext.PlayerDB.Where("referenceID = ?", body.UserIdentifier).First(&player).Error; err != nil {
+	if err := appContext.PlayerDB.Where(`"referenceID" = ?`, body.UserIdentifier).First(&player).Error; err != nil {
 
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Status(fiber.StatusInternalServerError)
