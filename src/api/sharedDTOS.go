@@ -1,5 +1,7 @@
 package api
 
+import "otte_main_backend/src/util"
+
 type LODDetails struct {
 	ID             uint32 `json:"id"`
 	DetailLevel    uint32 `json:"detailLevel" gorm:"column:detailLevel"`
@@ -24,4 +26,14 @@ type MinimizedAssetDTO struct {
 	Width   uint32       `json:"width"`
 	Height  uint32       `json:"height"`
 	LODs    []LODDetails `json:"LODs"`
+}
+
+// PlayerDTO represents the data returned for a player's basic information.
+type PlayerDTO struct {
+	ID                   uint32          `json:"id"`
+	ReferenceID          string          `json:"referenceID" gorm:"column:referenceID"`
+	IGN                  string          `json:"IGN"`
+	Sprite               uint32          `json:"sprite"`
+	Achievements         util.PGIntArray `json:"achievements"`
+	HasCompletedTutorial bool            `json:"hasCompletedTutorial"`
 }
