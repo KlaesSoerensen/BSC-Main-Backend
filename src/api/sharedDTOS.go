@@ -11,6 +11,7 @@ func (l LODDetails) TableName() string {
 }
 
 type TransformDTO struct {
+	ID      uint32  `json:"id"`
 	XOffset float32 `json:"xOffset"`
 	YOffset float32 `json:"yOffset"`
 	ZIndex  uint32  `json:"zIndex"`
