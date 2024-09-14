@@ -32,10 +32,10 @@ type MinimizedAssetDTO struct {
 type PlayerDTO struct {
 	ID                   uint32          `json:"id"`
 	ReferenceID          string          `json:"referenceID" gorm:"column:referenceID"`
-	IGN                  string          `json:"IGN"`
+	IGN                  string          `json:"IGN" gorm:"column:IGN"`
 	Sprite               uint32          `json:"sprite"`
 	Achievements         util.PGIntArray `json:"achievements"`
-	HasCompletedTutorial bool            `json:"hasCompletedTutorial"`
+	HasCompletedTutorial bool            `json:"hasCompletedTutorial" gorm:"-"`
 }
 
 func (p PlayerDTO) TableName() string {
