@@ -86,5 +86,5 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 
 	c.Status(fiber.StatusOK)
 	middleware.LogRequests(c)
-	return c.JSON(SessionInitiationResponseDTO{Token: session.Token})
+	return c.JSON(SessionInitiationResponseDTO{Token: string(session.Token)})
 }

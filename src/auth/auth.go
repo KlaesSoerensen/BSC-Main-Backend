@@ -1,26 +1,34 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"otte_main_backend/src/config"
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/middleware"
-	"sync"
+	"otte_main_backend/src/util"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 var errorUnauthorized error = fmt.Errorf("unauthorized")
 
+type CacheEntry[T any] struct {
+	Entry     *T
+	CreatedAt time.Time
+}
 type the_auth struct {
 	//Valid for a minute before requiring looking up again
-	SessionCache sync.Map
-	Method       func(c *fiber.Ctx) *fiber.Error
+	SessionCache util.ConcurrentTypedMap[SessionToken, CacheEntry[Session]]
+	//Function to call when authenticating a request
+	Method func(c *fiber.Ctx) *fiber.Error
 }
 
 var authSingleton *the_auth = &the_auth{
-	SessionCache: sync.Map{},
+	SessionCache: util.ConcurrentTypedMap[SessionToken, CacheEntry[Session]]{},
 }
 
 type AuthLevel string
@@ -78,9 +86,37 @@ func PrefixOn(appContext *meta.ApplicationContext, existingHandler func(c *fiber
 var ErrorUnauthorized *fiber.Error = fiber.NewError(401, errorUnauthorized.Error())
 
 func fullSessionCheckAuth(authService *the_auth, c *fiber.Ctx, appContext *meta.ApplicationContext) *fiber.Error {
-	//authHeaderContent := string(c.Request().Header.Peek(appContext.AuthTokenName))
+	authHeaderContent := string(c.Request().Header.Peek(appContext.AuthTokenName))
+	if len(authHeaderContent) == 0 {
+		c.Response().Header.Set(appContext.DDH, "Missing auth header, expected "+appContext.AuthTokenName+" to be present")
+		return ErrorUnauthorized
+	}
+	if cacheEntry, exists := authService.SessionCache.Load(SessionToken(authHeaderContent)); exists {
+		//If cache entry
+		if !time.Now().After(cacheEntry.CreatedAt.Add(time.Minute)) {
+			//If cache entry is valid (within 1 minute)
+			return nil
+		}
+	}
+	//If no cache entry OR cache entry is expired
+	var session Session
+	var dbErr error
+	if dbErr = appContext.PlayerDB.Where("token = ?", authHeaderContent).First(&session).Error; dbErr != nil {
+		if !errors.Is(dbErr, gorm.ErrRecordNotFound) {
+			log.Println("[AUTH] INTERNAL ERROR: " + dbErr.Error())
+		}
+		c.Response().Header.Set(appContext.DDH, "Invalid session token")
+		return ErrorUnauthorized
+	}
+	if time.Now().After(session.LastCheckIn.Add(time.Duration(session.ValidDurationMS) * time.Millisecond)) {
+		//If the session is expired
+		c.Response().Header.Set(appContext.DDH, "Session expired")
+		return ErrorUnauthorized
+	}
+	//Session exists and is valid:
+	authService.SessionCache.Store(SessionToken(authHeaderContent), CacheEntry[Session]{Entry: &session, CreatedAt: time.Now()})
 
-	return fiber.NewError(501, "Not implemented")
+	return nil
 }
 
 func naiveCheckForHeaderAuth(context *fiber.Ctx, tokenName string, defaultDebugHeader string) *fiber.Error {
