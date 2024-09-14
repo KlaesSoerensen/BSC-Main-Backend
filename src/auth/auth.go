@@ -2,22 +2,36 @@ package auth
 
 import (
 	"fmt"
+	"otte_main_backend/src/config"
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/middleware"
-	"time"
+	"sync"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-var errorUnauthorized error = fmt.Errorf("Unauthorized")
+var errorUnauthorized error = fmt.Errorf("unauthorized")
 
-type Session struct {
-	ID            uint32    `json:"id" gorm:"primaryKey"` // ID
-	Player        uint32    `json:"player" gorm:"foreignKey:player;references:ID"`
-	Token         string    `json:"token"`
-	ValidDuration uint32    `json:"validDuration"` //Column defaults to 1h, or 3600000ms
-	CreatedAt     time.Time `json:"createdAt"`     //Column defaults to NOW()
-	LastCheckIn   time.Time `json:"lastCheckIn"`   //Column defaults to NOW()
+type the_auth struct {
+	//Valid for a minute before requiring looking up again
+	SessionCache sync.Map
+}
+
+var authSingleton *the_auth = &the_auth{
+	SessionCache: sync.Map{},
+}
+
+type AuthLevel string
+
+const (
+	AuthLevelStrict AuthLevel = "strict"
+	AuthLevelNaive  AuthLevel = "naive"
+)
+
+func InitializeAuth() error {
+	level := config.GetOr("AUTH_LEVEL", "strict")
+
+	return nil
 }
 
 // Expands the original handler function's inputs (adding in the appContext) and prefixes an authcheck function.
