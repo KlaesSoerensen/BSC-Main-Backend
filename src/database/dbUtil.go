@@ -10,6 +10,13 @@ type PlayerDB = *gorm.DB
 type ColonyAssetDB = *gorm.DB
 type LanguageDB = *gorm.DB
 
+type DBLoggingLoudness string
+
+const (
+	DBLoggingVerbose DBLoggingLoudness = "verbose"
+	DBLoggingMinimal DBLoggingLoudness = "minimal"
+)
+
 type DBDSN struct {
 	Host     string
 	Port     uint64
@@ -26,8 +33,4 @@ func (dsn DBDSN) FullString() string {
 func (dsn DBDSN) SafeString() string {
 	return fmt.Sprintf("host=%s port=%d user=******** password=******** dbname=%s sslmode=%s",
 		dsn.Host, dsn.Port, dsn.Database, dsn.SSLMode)
-}
-
-func canICallThisFunction() {
-	fmt.Println("Yes, you can!")
 }

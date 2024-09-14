@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"log"
 	"otte_main_backend/src/config"
 	"strconv"
@@ -15,7 +16,10 @@ import (
 func ConnectPlayerDB() (PlayerDB, error) {
 	port, portErr := strconv.ParseUint(config.Get("PLAYER_DB_PORT"), 10, 32)
 	timeout, timeoutErr := strconv.Atoi(config.Get("DB_MAX_TIMEOUT"))
-
+	loudness, envErr := getLoggingLoudness("PLAYER_DB_LOGGING_LEVEL")
+	if envErr != nil {
+		return nil, envErr
+	}
 	if portErr != nil {
 		log.Println("Error parsing player db port value from environment")
 	}
@@ -33,12 +37,17 @@ func ConnectPlayerDB() (PlayerDB, error) {
 		SSLMode:  "disable",
 	}
 
-	return attemptConnectionWithinTimeout(timeout, dsn, false)
+	return attemptConnectionWithinTimeout(timeout, dsn, loudness)
 }
 
 func ConnectLanguageDB() (LanguageDB, error) {
 	port, portErr := strconv.ParseUint(config.Get("LANGUAGE_DB_PORT"), 10, 32)
 	timeout, timeoutErr := strconv.Atoi(config.Get("DB_MAX_TIMEOUT"))
+	loudness, envErr := getLoggingLoudness("LANGUAGE_DB_LOGGING_LEVEL")
+	if envErr != nil {
+		return nil, envErr
+	}
+
 	if portErr != nil {
 		log.Println("Error parsing language db port value from environment")
 	}
@@ -54,12 +63,16 @@ func ConnectLanguageDB() (LanguageDB, error) {
 		SSLMode:  "disable",
 	}
 
-	return attemptConnectionWithinTimeout(timeout, dsn, false)
+	return attemptConnectionWithinTimeout(timeout, dsn, loudness)
 }
 
 func ConnectColonyAssetDB() (LanguageDB, error) {
 	port, portErr := strconv.ParseUint(config.Get("COLONY_ASSET_DB_PORT"), 10, 32)
 	timeout, timeoutErr := strconv.Atoi(config.Get("DB_MAX_TIMEOUT"))
+	loudness, envErr := getLoggingLoudness("COLONY_ASSET_DB_LOGGING_LEVEL")
+	if envErr != nil {
+		return nil, envErr
+	}
 
 	if portErr != nil {
 		log.Println("Error parsing colony and asset db port value from environment")
@@ -76,12 +89,27 @@ func ConnectColonyAssetDB() (LanguageDB, error) {
 		SSLMode:  "disable",
 	}
 
-	return attemptConnectionWithinTimeout(timeout, dsn, false)
+	return attemptConnectionWithinTimeout(timeout, dsn, loudness)
 }
 
-func attemptConnectionWithinTimeout(timeout int, dsn DBDSN, silencePlease bool) (*gorm.DB, error) {
+func getLoggingLoudness(envKey string) (DBLoggingLoudness, error) {
+	loudnessStr := config.Get(envKey)
+	var loudness DBLoggingLoudness
+	switch loudnessStr {
+	case "verbose":
+		loudness = DBLoggingVerbose
+	case "minimal":
+		loudness = DBLoggingMinimal
+	default:
+		return loudness, fmt.Errorf("invalid logging level for colony asset db: %s", loudnessStr)
+	}
+	return loudness, nil
+}
+
+func attemptConnectionWithinTimeout(timeout int, dsn DBDSN, loggingLoudness DBLoggingLoudness) (*gorm.DB, error) {
 	log.Printf("[database] Trying to establish connection to %s within: %d seconds. \n", dsn.Database, timeout)
 	log.Println("[database] Using dsn: " + dsn.SafeString())
+	log.Println("[database] Logging level: " + string(loggingLoudness))
 
 	var err error
 	var db *gorm.DB
@@ -92,7 +120,7 @@ func attemptConnectionWithinTimeout(timeout int, dsn DBDSN, silencePlease bool) 
 			SingularTable: true,
 		},
 	}
-	if silencePlease {
+	if loggingLoudness == DBLoggingMinimal {
 		gormConfig.Logger = logger.Default.LogMode(logger.Silent)
 	}
 
@@ -102,9 +130,6 @@ func attemptConnectionWithinTimeout(timeout int, dsn DBDSN, silencePlease bool) 
 
 		log.Printf("[database] %s Attempt %d/%d\n", dsn.Database, attemptNum, timeout)
 
-		// instead of default table name "<>+s" the table name will be "<>"
-		// if succesfully connected
-		// if last attempt
 		db, expectedError = gorm.Open(postgres.Open(dsn.FullString()), gormConfig)
 
 		if expectedError == nil {
