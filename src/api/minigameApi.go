@@ -13,7 +13,7 @@ import (
 
 type MinimizedMinigameDTO struct {
 	Settings            string `json:"settings"`
-	OverwritingSettings string `json:"overwritingSettings"`
+	OverwritingSettings string `json:"overwritingSettings" gorm:"column:overwritingSettings"`
 }
 
 type MinigameDifficultyDTO struct {
@@ -45,14 +45,17 @@ func (mInfoDTO *MinigameInfoDTO) TableName() string {
 func applyMinigameApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Minigame API] Applying Minigame API")
 
-	app.Get("/api/v1/minigames/:id", auth.PrefixOn(appContext, getMinigameInfoHandler))
+	//Fiber is so stateful that it infers "minimized" as a query param if registered after minigames/:id
+	//y
 	app.Get("/api/v1/minigames/minimized", auth.PrefixOn(appContext, getMinimizedMinigameHandler))
+
+	app.Get("/api/v1/minigames/:id", auth.PrefixOn(appContext, getMinigameInfoHandler))
 
 	return nil
 }
 
 func getMinimizedMinigameHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-	idStr := c.Query("id")
+	idStr := c.Query("minigame")
 	diffStr := c.Query("difficulty")
 	minigameID, idParseErr := strconv.Atoi(idStr)
 	if idParseErr != nil {
@@ -68,18 +71,24 @@ func getMinimizedMinigameHandler(c *fiber.Ctx, appContext *meta.ApplicationConte
 	var minigame MinimizedMinigameDTO
 	if err := appContext.ColonyAssetDB.
 		Table("MiniGame").
-		Select(`"Minigame".settings", "MiniGameDifficulty"."overwritingSettings"`).
-		Where(`"MiniGame".id = ?`, minigameID).
-		Joins("JOIN MiniGameDifficulty ON MiniGameDifficulty.minigame = MiniGame.id AND MiniGameDifficulty.id = ?", diffID).
-		First(&minigame).Error; err != nil {
+		Table("MiniGame").
+		Select(`"MiniGame".settings, "MiniGameDifficulty"."overwritingSettings"`).
+		Joins(`JOIN "MiniGameDifficulty" ON "MiniGame".id = ?`, minigameID).
+		Where(`"MiniGameDifficulty".id = ?`, diffID).
+		Scan(&minigame).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.Response().Header.Set(appContext.DDH, "No such minigame or minigame difficulty")
-			return fiber.NewError(fiber.StatusNotFound, "No such minigame or minigame difficulty")
+			c.Response().Header.Set(appContext.DDH, "No such minigame or difficulty")
+			return fiber.NewError(fiber.StatusNotFound, "No such minigame or difficulty")
 		}
 
 		c.Response().Header.Set(appContext.DDH, "Error in fetching minigame "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Error in fetching minigame "+err.Error())
+	}
+
+	if minigame.Settings == "" || minigame.OverwritingSettings == "" {
+		c.Response().Header.Set(appContext.DDH, "No such minigame or minigame difficulty")
+		return fiber.NewError(fiber.StatusNotFound, "No such minigame or minigame difficulty")
 	}
 
 	c.Status(fiber.StatusOK)
