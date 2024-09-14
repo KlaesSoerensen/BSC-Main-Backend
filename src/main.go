@@ -81,16 +81,19 @@ func ConnectDatabases() (db.ColonyAssetDB, db.LanguageDB, db.PlayerDB, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	log.Println("[database] Successfully connected to Colony Asset DB")
 
 	languageDB, err := db.ConnectLanguageDB()
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	log.Println("[database] Successfully connected to Language DB")
 
 	playerDB, err := db.ConnectPlayerDB()
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	log.Println("[database] Successfully connected to Player DB")
 
 	return colonyAssetDB, languageDB, playerDB, nil
 }
