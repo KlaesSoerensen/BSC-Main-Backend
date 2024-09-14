@@ -19,6 +19,7 @@ type MinimizedMinigameDTO struct {
 type MinigameDifficultyDTO struct {
 	ID                  uint32 `json:"id"`
 	Name                string `json:"name"`
+	MinigameID          uint32 `json:"minigameID" gorm:"column:minigame"`
 	Icon                uint32 `json:"icon"`
 	Description         string `json:"description"`
 	OverwritingSettings string `json:"overwritingSettings" gorm:"column:overwritingSettings"`
@@ -34,7 +35,11 @@ type MinigameInfoDTO struct {
 	Icon         uint32                  `json:"icon"`
 	Description  string                  `json:"description"`
 	Settings     string                  `json:"settings"`
-	Difficulties []MinigameDifficultyDTO `json:"difficulties"`
+	Difficulties []MinigameDifficultyDTO `json:"difficulties" gorm:"foreignKey:MinigameID;references:ID"`
+}
+
+func (mInfoDTO *MinigameInfoDTO) TableName() string {
+	return "MiniGame"
 }
 
 func applyMinigameApi(app *fiber.App, appContext *meta.ApplicationContext) error {
@@ -57,7 +62,7 @@ func getMinigameInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 	var minigame MinigameInfoDTO
 	if err := appContext.ColonyAssetDB.
 		Table("MiniGame").
-		Preload("MiniGameDifficulty").
+		Preload("Difficulties").
 		Where(`"MiniGame".id = ?`, id).
 		Find(&minigame).Error; err != nil {
 
