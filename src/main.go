@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	api "otte_main_backend/src/api"
+	"otte_main_backend/src/auth"
 	"otte_main_backend/src/config"
 	db "otte_main_backend/src/database"
 	"otte_main_backend/src/meta"
@@ -34,6 +35,11 @@ func main() {
 	}
 
 	var context = meta.CreateApplicationContext(colonyDB, languageDB, playerDB, vitecIntegration, config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"))
+	authInitErr := auth.InitializeAuth(context)
+	if authInitErr != nil {
+		panic(authInitErr)
+	}
+
 	app := fiber.New()
 
 	app.Use(cors.New())
