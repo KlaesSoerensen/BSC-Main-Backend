@@ -24,9 +24,9 @@ type PlayerInfoResponse struct {
 // PlayerPreference represents a single preference item.
 type PlayerPreference struct {
 	ID              uint32             `json:"id"`
-	PreferenceKey   string             `json:"key" gorm:"column:preferenceKey"`
+	PreferenceKey   string             `json:"key" gorm:"column:preferenceKey;foreignKey:preferenceKey;references:preferenceKey"`
 	ChosenValue     string             `json:"chosenValue" gorm:"column:chosenValue"`
-	AvailableValues util.PGStringArray `json:"availableValues" gorm:"column:availableValues"` // Use the custom array type
+	AvailableValues util.PGStringArray `json:"availableValues" gorm:"column:availableValues"`
 }
 
 // PlayerPreferencesResponse represents the data returned for a player's preferences.
@@ -37,26 +37,24 @@ type PlayerPreferencesResponse struct {
 // ColonyInfoResponse represents the data for a single colony.
 type ColonyInfoResponse struct {
 	ID          uint32              `json:"id"`
-	AccLevel    uint32              `json:"accLevel"`
+	AccLevel    uint32              `json:"accLevel" gorm:"column:accLevel"`
 	Name        string              `json:"name"`
-	LatestVisit string              `json:"latestVisit"`
-	Assets      []ColonyAssetDTO    `json:"assets"`
-	Locations   []ColonyLocationDTO `json:"locations"`
+	LatestVisit string              `json:"latestVisit" gorm:"column:latestVisit"`
+	Assets      []ColonyAssetDTO    `json:"assets" gorm:"foreignKey:ColonyID;references:ID"`    // Define the foreign key for Assets
+	Locations   []ColonyLocationDTO `json:"locations" gorm:"foreignKey:ColonyID;references:ID"` // Also specify foreign key for Locations if needed
 }
 
-// ColonyAssetDTO represents an asset in a colony.
 type ColonyAssetDTO struct {
-	AssetCollectionID uint32       `json:"assetCollectionID"`
-	TransformID       uint32       `json:"-"`         // Add this to store the transform ID
-	Transform         TransformDTO `json:"transform"` // Will be populated manually
+	ColonyID          uint32       `json:"colonyID" gorm:"column:colony"` // This links back to the colony
+	AssetCollectionID uint32       `json:"assetCollectionID" gorm:"column:assetCollection"`
+	Transform         TransformDTO `json:"transform" gorm:"foreignKey:Transform;references:ID"`
 }
 
-// ColonyLocationDTO represents a location in a colony.
 type ColonyLocationDTO struct {
+	ColonyID          uint32       `json:"colonyID" gorm:"column:colony"` // This links back to the colony
 	Level             uint32       `json:"level"`
-	AssetCollectionID uint32       `json:"assetCollectionID"`
-	TransformID       uint32       `json:"-"`         // Add this to store the transform ID
-	Transform         TransformDTO `json:"transform"` // Will be populated manually
+	AssetCollectionID uint32       `json:"assetCollectionID" gorm:"column:assetCollection"`
+	Transform         TransformDTO `json:"transform" gorm:"foreignKey:Transform;references:ID"`
 }
 
 // ColonyOverviewResponse represents a collection of colonies.
@@ -109,7 +107,7 @@ func getPlayerPreferencesHandler(c *fiber.Ctx, appContext *meta.ApplicationConte
 			c.Response().Header.Set(appContext.DDH, "Preferences not found "+err.Error())
 			return fiber.NewError(fiber.StatusNotFound, "Preferences not found "+err.Error())
 		}
-		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		//Gorm exposes secrets in err when DB is down, so it can't be included in the response
 		c.Response().Header.Set(appContext.DDH, "Internal server error")
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
@@ -142,7 +140,7 @@ func getPlayerInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 			return fiber.NewError(fiber.StatusNotFound, "Player not found "+err.Error())
 		}
 
-		//Gorm be exposing secrets in err when DB is down, so it cant be included in the response
+		// Gorm exposes secrets in err when DB is down, so it can't be included in the response
 		c.Response().Header.Set(appContext.DDH, "Internal server error")
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
@@ -173,9 +171,9 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 
 	// Fetch the colony information
 	var colony ColonyInfoResponse
-	if err := appContext.PlayerDB.
+	if err := appContext.ColonyAssetDB.
 		Table("Colony").
-		Select(`id, accLevel, name, latestVisit`).
+		Select(`id, "accLevel", name, "latestVisit"`).
 		Where("id = ? AND owner = ?", colonyId, playerId).
 		First(&colony).Error; err != nil {
 
@@ -188,54 +186,28 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
-	// Fetch assets for the colony, including the TransformID
+	// Fetch assets for the colony, including the TransformDTO automatically
 	var assets []ColonyAssetDTO
-	if err := appContext.PlayerDB.
+	if err := appContext.ColonyAssetDB.
+		Preload("Transform"). // Preload the TransformDTO
 		Table("ColonyAsset").
-		Select(`assetCollection, transform`).
+		Select(`assetCollection`).
 		Where("colony = ?", colonyId).
-		Scan(&assets).Error; err != nil {
+		Find(&assets).Error; err != nil {
 		c.Response().Header.Set(appContext.DDH, "Error fetching assets "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Error fetching assets")
 	}
 
-	// Manually populate the TransformDTO for each asset using TransformID
-	for i := range assets {
-		var transform TransformDTO
-		if err := appContext.PlayerDB.
-			Table("Transform").
-			Select(`xOffset, yOffset, zIndex, xScale, yScale`).
-			Where("id = ?", assets[i].TransformID).
-			Scan(&transform).Error; err != nil {
-			c.Response().Header.Set(appContext.DDH, "Error fetching transform data for asset "+err.Error())
-			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching transform data for asset")
-		}
-		assets[i].Transform = transform
-	}
-
-	// Fetch locations for the colony, including the TransformID
+	// Fetch locations for the colony, including the TransformDTO automatically
 	var locations []ColonyLocationDTO
-	if err := appContext.PlayerDB.
+	if err := appContext.ColonyAssetDB.
+		Preload("Transform"). // Preload the TransformDTO
 		Table("ColonyLocation").
-		Select(`level, location, transform`).
+		Select(`level, location`).
 		Where("colony = ?", colonyId).
-		Scan(&locations).Error; err != nil {
+		Find(&locations).Error; err != nil {
 		c.Response().Header.Set(appContext.DDH, "Error fetching locations "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Error fetching locations")
-	}
-
-	// Manually populate the TransformDTO for each location using TransformID
-	for i := range locations {
-		var transform TransformDTO
-		if err := appContext.PlayerDB.
-			Table("Transform").
-			Select(`xOffset, yOffset, zIndex, xScale, yScale`).
-			Where("id = ?", locations[i].TransformID).
-			Scan(&transform).Error; err != nil {
-			c.Response().Header.Set(appContext.DDH, "Error fetching transform data for location "+err.Error())
-			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching transform data for location")
-		}
-		locations[i].Transform = transform
 	}
 
 	// Attach assets and locations to the colony response
@@ -257,7 +229,7 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 
 	// Fetch all colonies for the player
 	var colonies []ColonyInfoResponse
-	if err := appContext.PlayerDB.
+	if err := appContext.ColonyAssetDB.
 		Table("Colony").
 		Where("owner = ?", playerId).
 		Find(&colonies).Error; err != nil {
@@ -275,25 +247,27 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	for i := range colonies {
 		colonyId := colonies[i].ID
 
-		// Fetch assets for this colony
+		// Fetch assets for this colony, including the TransformDTO automatically
 		var assets []ColonyAssetDTO
-		if err := appContext.PlayerDB.
+		if err := appContext.ColonyAssetDB.
+			Preload("Transform"). // Preload the TransformDTO
 			Table("ColonyAsset").
-			Select(`"assetCollection", "transform"`).
+			Select(`assetCollection`).
 			Where("colony = ?", colonyId).
-			Scan(&assets).Error; err != nil {
+			Find(&assets).Error; err != nil {
 			c.Response().Header.Set(appContext.DDH, "Error fetching assets for colony "+strconv.Itoa(int(colonyId))+" "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching assets for colony")
 		}
 		colonies[i].Assets = assets
 
-		// Fetch locations for this colony
+		// Fetch locations for this colony, including the TransformDTO automatically
 		var locations []ColonyLocationDTO
-		if err := appContext.PlayerDB.
+		if err := appContext.ColonyAssetDB.
+			Preload("Transform"). // Preload the TransformDTO
 			Table("ColonyLocation").
-			Select(`"level", "assetCollection", "transform"`).
+			Select(`"level", location`).
 			Where("colony = ?", colonyId).
-			Scan(&locations).Error; err != nil {
+			Find(&locations).Error; err != nil {
 			c.Response().Header.Set(appContext.DDH, "Error fetching locations for colony "+strconv.Itoa(int(colonyId))+" "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching locations for colony")
 		}
