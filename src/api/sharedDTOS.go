@@ -37,3 +37,7 @@ type PlayerDTO struct {
 	Achievements         util.PGIntArray `json:"achievements"`
 	HasCompletedTutorial bool            `json:"hasCompletedTutorial"`
 }
+
+func (p PlayerDTO) TableName() string {
+	return "Player"
+}
