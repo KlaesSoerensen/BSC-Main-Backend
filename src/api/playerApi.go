@@ -12,15 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// PlayerInfoResponse represents the data returned for a player's basic information.
-type PlayerInfoResponse struct {
-	ID                   uint32          `json:"id"`
-	IGN                  string          `json:"IGN"`
-	Sprite               uint32          `json:"sprite"`
-	Achievements         util.PGIntArray `json:"achievements"`
-	HasCompletedTutorial bool            `json:"hasCompletedTutorial"`
-}
-
 // PlayerPreference represents a single preference item.
 type PlayerPreference struct {
 	ID              uint32             `json:"id"`
@@ -128,7 +119,7 @@ func getPlayerInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 	}
 
 	// Fetch player information from the database
-	var player PlayerInfoResponse
+	var player PlayerDTO
 	if err := appContext.PlayerDB.
 		Table("Player").
 		Select(`id, "IGN", sprite, achievements`).
