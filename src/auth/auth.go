@@ -108,7 +108,7 @@ func fullSessionCheckAuth(authService *the_auth, c *fiber.Ctx, appContext *meta.
 		c.Response().Header.Set(appContext.DDH, "Invalid session token")
 		return ErrorUnauthorized
 	}
-	if time.Now().After(session.LastCheckIn.Add(time.Duration(session.ValidDurationMS) * time.Millisecond)) {
+	if time.Now().After(session.LastCheckIn.Add(time.Duration(session.ValidDuration) * time.Millisecond)) {
 		//If the session is expired
 		c.Response().Header.Set(appContext.DDH, "Session expired")
 		return ErrorUnauthorized
