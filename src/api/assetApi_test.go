@@ -41,7 +41,7 @@ func setupAssetTest(t *testing.T) (gormDB *gorm.DB, mock sqlmock.Sqlmock, app *f
 	}
 
 	app = fiber.New()
-	appContext = meta.CreateApplicationContext(gormDB, gormDB, gormDB, "Test-DDH")
+	appContext = meta.CreateApplicationContext(gormDB, gormDB, gormDB, nil, "Test-DDH")
 
 	err = applyAssetApi(app, appContext)
 	if err != nil {

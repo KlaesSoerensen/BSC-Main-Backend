@@ -4,11 +4,21 @@ import (
 	"fmt"
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/middleware"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 var errorUnauthorized error = fmt.Errorf("Unauthorized")
+
+type Session struct {
+	ID            uint32    `json:"id" gorm:"primaryKey"` // ID
+	Player        uint32    `json:"player" gorm:"foreignKey:player;references:ID"`
+	Token         string    `json:"token"`
+	ValidDuration uint32    `json:"validDuration"` //Column defaults to 1h, or 3600000ms
+	CreatedAt     time.Time `json:"createdAt"`     //Column defaults to NOW()
+	LastCheckIn   time.Time `json:"lastCheckIn"`   //Column defaults to NOW()
+}
 
 // Expands the original handler function's inputs (adding in the appContext) and prefixes an authcheck function.
 //

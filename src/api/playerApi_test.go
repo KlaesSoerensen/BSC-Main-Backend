@@ -41,7 +41,7 @@ func setupPlayerTest(t *testing.T) (sqlmock.Sqlmock, *fiber.App, *meta.Applicati
 	}
 
 	app := fiber.New()
-	appContext := meta.CreateApplicationContext(gormDB, gormDB, gormDB, "Test-DDH")
+	appContext := meta.CreateApplicationContext(gormDB, gormDB, gormDB, nil, "Test-DDH")
 
 	err = applyPlayerApi(app, appContext)
 	if err != nil {
