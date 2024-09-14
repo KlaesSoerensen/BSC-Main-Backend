@@ -10,7 +10,7 @@ import (
 //
 // "[TIME] [DATE] INC REQ: [METHOD] [PATH] at [TIME] from [IP] response: [STATUS_CODE]"
 func LogRequests(c *fiber.Ctx) error {
-	log.Printf("[REQ LOG] %s --> %s %-30s --> %d\n",
+	log.Printf("[REQ LOG] %s --> %-7s %-30s --> %d\n",
 		c.IP(),
 		c.Method(),
 		c.Path(),
