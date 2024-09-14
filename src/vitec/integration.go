@@ -9,6 +9,7 @@ import (
 type SessionInitiationDTO struct {
 	UserIdentifier      string `json:"userIdentifier"`
 	CurrentSessionToken string `json:"currentSessionToken"`
+	IGN                 string `json:"IGN"`
 }
 
 type CrossVerificationType string
@@ -31,7 +32,6 @@ func alwaysVerifyUser(integration *VitecIntegration, initiationDTO *SessionIniti
 
 func CreateNewVitecIntegration() (*VitecIntegration, error) {
 	crossVerificationType := config.GetOr("VITEC_CROSS_VERIFICATION", "always")
-	log.Println("[MV INT] Establishing Vitec Cross Verification. Type: ", crossVerificationType)
 
 	var integration = &VitecIntegration{} //Struct stepwise initialized in this function
 
@@ -40,6 +40,7 @@ func CreateNewVitecIntegration() (*VitecIntegration, error) {
 		integration.VerifyUser = func(initiationDTO *SessionInitiationDTO) error {
 			return neverVerifyUser(integration, initiationDTO)
 		}
+		log.Println("[MV INT] Establishing Vitec Cross Verification. Type: ", CrossVerificationNever)
 	case CrossVerificationAlways:
 		ip, ipErr := config.LoudGet("VITEC_MV_AUTH_IP")
 		if ipErr != nil {
@@ -57,6 +58,7 @@ func CreateNewVitecIntegration() (*VitecIntegration, error) {
 		integration.VerifyUser = func(initiationDTO *SessionInitiationDTO) error {
 			return alwaysVerifyUser(integration, initiationDTO)
 		}
+		log.Println("[MV INT] Establishing Vitec Cross Verification. Type: ", CrossVerificationAlways)
 	default:
 		return nil, fmt.Errorf("invalid cross verification type: %s", crossVerificationType)
 	}

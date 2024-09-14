@@ -14,7 +14,6 @@ import (
 )
 
 func main() {
-	log.Println("[server] Starting server...")
 	if _, envErr := config.DetectAndApplyENV(); envErr != nil {
 		panic(envErr)
 	}
@@ -42,6 +41,7 @@ func main() {
 		panic(apiErr)
 	}
 
+	log.Println("[server] Starting server...")
 	log.Fatal(doTheTLSThing(servicePort, app))
 }
 
