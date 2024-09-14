@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -12,13 +13,22 @@ import (
 
 var cache = map[string]string{}
 
+type RuntimeMode string
+
+const (
+	RuntimeModeUnknown RuntimeMode = "unknown"
+	RuntimeModeDev     RuntimeMode = "dev"
+	RuntimeModeProd    RuntimeMode = "prod"
+)
+
 // Checks the exec args and loads the first one found. Ignores the rest.
 // Accepts flags: "--dev", "--prod" (prod is handled by the docker-compose file currentyly)
-func DetectAndApplyENV() error {
+func DetectAndApplyENV() (RuntimeMode, error) {
 	wd, wdErr := os.Getwd()
 	if wdErr != nil {
-		return fmt.Errorf("[config] Error getting working directory: %s", wdErr.Error())
+		return RuntimeModeUnknown, fmt.Errorf("[config] Error getting working directory: %s", wdErr.Error())
 	}
+	var runtimeMode RuntimeMode
 	log.Printf("[config] Working directory: %s\n", wd)
 	args := os.Args
 	var envErr error
@@ -26,18 +36,20 @@ func DetectAndApplyENV() error {
 		if arg == "--dev" {
 			log.Println("[config] --dev flag found, loading dev config")
 			envErr = LoadDevConfig()
+			runtimeMode = RuntimeModeDev
 		}
 		if arg == "--prod" {
 			log.Println("[config] --prod flag found, loading prod config")
 			envErr = LoadProdConfig()
+			runtimeMode = RuntimeModeProd
 		}
 
 		if envErr != nil {
-			return envErr
+			return runtimeMode, envErr
 		}
 	}
 
-	return nil
+	return runtimeMode, nil
 }
 
 // Overwrites any env variables currently set in environment
@@ -102,4 +114,12 @@ func GetOr(key string, defaultValue string) string {
 		return defaultValue
 	}
 	return val
+}
+
+func GetInt(key string) (int, error) {
+	val, err := LoudGet(key)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(val)
 }

@@ -6,6 +6,7 @@ import (
 	"otte_main_backend/src/config"
 	db "otte_main_backend/src/database"
 	"otte_main_backend/src/meta"
+	"otte_main_backend/src/vitec"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,7 +15,7 @@ import (
 
 func main() {
 	log.Println("[server] Starting server...")
-	if envErr := config.DetectAndApplyENV(); envErr != nil {
+	if _, envErr := config.DetectAndApplyENV(); envErr != nil {
 		panic(envErr)
 	}
 
@@ -27,7 +28,13 @@ func main() {
 	if dbErr != nil {
 		panic(dbErr)
 	}
-	var context = meta.CreateApplicationContext(colonyDB, languageDB, playerDB, config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"))
+
+	vitecIntegration, integrationErr := vitec.CreateNewVitecIntegration()
+	if integrationErr != nil {
+		panic(integrationErr)
+	}
+
+	var context = meta.CreateApplicationContext(colonyDB, languageDB, playerDB, vitecIntegration, config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"))
 	app := fiber.New()
 
 	app.Use(cors.New())
