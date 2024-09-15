@@ -34,7 +34,7 @@ func main() {
 		panic(integrationErr)
 	}
 
-	var context = meta.CreateApplicationContext(colonyDB, languageDB, playerDB, vitecIntegration, config.GetOr("DEFAULT_DEBUG_HEADER", "DEFAULT-DEBUG-HEADER"))
+	var context = meta.CreateApplicationContext(colonyDB, languageDB, playerDB, vitecIntegration, config.GetOr("DEFAULT_DEBUG_HEADER", "URSA-DDH"))
 	authInitErr := auth.InitializeAuth(context)
 	if authInitErr != nil {
 		panic(authInitErr)
