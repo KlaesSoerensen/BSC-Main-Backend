@@ -16,15 +16,17 @@ import (
 
 // DTO's
 type AssetResponse struct {
-	ID      uint32       `json:"id"`
-	UseCase string       `json:"useCase" gorm:"column:useCase"`
-	Type    string       `json:"type"`
-	Width   uint32       `json:"width"`
-	Height  uint32       `json:"height"`
-	HasLODs bool         `json:"hasLODs" gorm:"column:hasLODs"`
+	ID      uint32 `json:"id"`
+	UseCase string `json:"useCase" gorm:"column:useCase"`
+	Type    string `json:"type"`
+	Width   uint32 `json:"width"`
+	Height  uint32 `json:"height"`
+	HasLODs bool   `json:"hasLODs" gorm:"column:hasLODs"`
+	/** DEPRECATED see explanation in lodAPI.go
 	Blob    []byte       `json:"blob"`
-	Alias   string       `json:"alias"`
-	LODs    []LODDetails `json:"LODs" gorm:"foreignKey:GraphicalAsset;references:ID"`
+	*/
+	Alias string       `json:"alias"`
+	LODs  []LODDetails `json:"LODs" gorm:"foreignKey:GraphicalAsset;references:ID"`
 }
 
 type MultiAssetResponse []AssetResponse
