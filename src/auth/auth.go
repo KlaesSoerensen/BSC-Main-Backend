@@ -20,15 +20,16 @@ type CacheEntry[T any] struct {
 	Entry     *T
 	CreatedAt time.Time
 }
-type the_auth struct {
+type AuthService struct {
 	//Valid for a minute before requiring looking up again
 	SessionCache util.ConcurrentTypedMap[SessionToken, CacheEntry[Session]]
 	//Function to call when authenticating a request
 	Method func(c *fiber.Ctx) *fiber.Error
 }
 
-var authSingleton *the_auth = &the_auth{
+var authSingleton *AuthService = &AuthService{
 	SessionCache: util.ConcurrentTypedMap[SessionToken, CacheEntry[Session]]{},
+	Method:       nil, //Set in InitializeAuth
 }
 
 type AuthLevel string
@@ -38,7 +39,7 @@ const (
 	AuthLevelNaive  AuthLevel = "naive"
 )
 
-func InitializeAuth(appContext *meta.ApplicationContext) error {
+func InitializeAuth(appContext *meta.ApplicationContext) (*AuthService, error) {
 	level := config.GetOr("INTERNAL_AUTH_LEVEL", "strict")
 
 	switch AuthLevel(level) {
@@ -53,10 +54,21 @@ func InitializeAuth(appContext *meta.ApplicationContext) error {
 		}
 		log.Println("[AUTH] Level set to naive")
 	default:
-		return fmt.Errorf("Invalid auth level: %s", level)
+		return nil, fmt.Errorf("Invalid auth level: %s", level)
 	}
 
-	return nil
+	return authSingleton, nil
+}
+
+func GetSessionByReferenceID(referenceID string, appContext *meta.ApplicationContext) (*Session, error) {
+	//First check cache
+	authSingleton.SessionCache.Load(SessionToken(referenceID))
+	//If not in cache, check DB
+
+	//If in DB, add to cache
+
+	//If not in DB either, return error
+	return nil, errorUnauthorized
 }
 
 // Expands the original handler function's inputs (adding in the appContext) and prefixes an authcheck function.
@@ -85,7 +97,7 @@ func PrefixOn(appContext *meta.ApplicationContext, existingHandler func(c *fiber
 
 var ErrorUnauthorized *fiber.Error = fiber.NewError(401, errorUnauthorized.Error())
 
-func fullSessionCheckAuth(authService *the_auth, c *fiber.Ctx, appContext *meta.ApplicationContext) *fiber.Error {
+func fullSessionCheckAuth(authService *AuthService, c *fiber.Ctx, appContext *meta.ApplicationContext) *fiber.Error {
 	authHeaderContent := string(c.Request().Header.Peek(appContext.AuthTokenName))
 	if len(authHeaderContent) == 0 {
 		c.Response().Header.Set(appContext.DDH, "Missing auth header, expected "+appContext.AuthTokenName+" to be present")
@@ -93,7 +105,7 @@ func fullSessionCheckAuth(authService *the_auth, c *fiber.Ctx, appContext *meta.
 	}
 	if cacheEntry, exists := authService.SessionCache.Load(SessionToken(authHeaderContent)); exists {
 		//If cache entry
-		if !time.Now().After(cacheEntry.CreatedAt.Add(time.Minute)) {
+		if time.Since(cacheEntry.CreatedAt) < time.Minute {
 			//If cache entry is valid (within 1 minute)
 			return nil
 		}
@@ -108,13 +120,13 @@ func fullSessionCheckAuth(authService *the_auth, c *fiber.Ctx, appContext *meta.
 		c.Response().Header.Set(appContext.DDH, "Invalid session token")
 		return ErrorUnauthorized
 	}
-	if time.Now().After(session.LastCheckIn.Add(time.Duration(session.ValidDuration) * time.Millisecond)) {
+	if !IsSessionStillValid(&session) {
 		//If the session is expired
 		c.Response().Header.Set(appContext.DDH, "Session expired")
 		return ErrorUnauthorized
 	}
 	//Session exists and is valid:
-	authService.SessionCache.Store(SessionToken(authHeaderContent), CacheEntry[Session]{Entry: &session, CreatedAt: time.Now()})
+	authService.SessionCache.Store(session.Token, CacheEntry[Session]{Entry: &session, CreatedAt: time.Now()})
 
 	return nil
 }

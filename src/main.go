@@ -35,7 +35,7 @@ func main() {
 	}
 
 	var context = meta.CreateApplicationContext(colonyDB, languageDB, playerDB, vitecIntegration, config.GetOr("DEFAULT_DEBUG_HEADER", "URSA-DDH"))
-	authInitErr := auth.InitializeAuth(context)
+	authService, authInitErr := auth.InitializeAuth(context)
 	if authInitErr != nil {
 		panic(authInitErr)
 	}
@@ -43,7 +43,7 @@ func main() {
 	app := fiber.New()
 
 	app.Use(cors.New())
-	if apiErr := api.ApplyEndpoints(app, context); apiErr != nil {
+	if apiErr := api.ApplyEndpoints(app, context, authService); apiErr != nil {
 		panic(apiErr)
 	}
 
