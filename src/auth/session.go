@@ -27,7 +27,11 @@ func (s *Session) TableName() string {
 // MS
 const DEFAULT_VALID_DURATION = 3600000 //1 hour
 
-func CreateSessionForPlayer(playerID uint32, appContext *meta.ApplicationContext, idOfPreviousSession int) (*Session, error) {
+func IsSessionStillValid(session *Session) bool {
+	return time.Since(session.LastCheckIn).Milliseconds() < int64(session.ValidDuration)
+}
+
+func CreateSessionForPlayer(playerID uint32, appContext *meta.ApplicationContext, idOfPreviousSession int, authService *AuthService) (*Session, error) {
 	var token, generationErr = generateBase32String(64)
 	if generationErr != nil {
 		return nil, fmt.Errorf("unable to generate session token")
@@ -45,6 +49,7 @@ func CreateSessionForPlayer(playerID uint32, appContext *meta.ApplicationContext
 	if createSessionError := appContext.PlayerDB.Save(&session).Error; createSessionError != nil {
 		return nil, fmt.Errorf("unable to save session")
 	}
+	authService.SessionCache.Store(session.Token, CacheEntry[Session]{Entry: &session, CreatedAt: time.Now()})
 	return &session, nil
 }
 

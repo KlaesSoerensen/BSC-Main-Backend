@@ -1,12 +1,13 @@
 package api
 
 import (
+	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func ApplyEndpoints(app *fiber.App, appContext *meta.ApplicationContext) error {
+func ApplyEndpoints(app *fiber.App, appContext *meta.ApplicationContext, authService *auth.AuthService) error {
 	if err := applyCatalog(app, appContext); err != nil {
 		return err
 	}
@@ -37,7 +38,7 @@ func ApplyEndpoints(app *fiber.App, appContext *meta.ApplicationContext) error {
 	if err := applyPlayerApi(app, appContext); err != nil {
 		return err
 	}
-	if err := applySessionApi(app, appContext); err != nil {
+	if err := applySessionApi(app, appContext, authService); err != nil {
 		return err
 	}
 	return nil
