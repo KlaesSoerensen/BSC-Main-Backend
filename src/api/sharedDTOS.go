@@ -14,11 +14,15 @@ func (l LODDetails) TableName() string {
 
 type TransformDTO struct {
 	ID      uint32  `json:"id"`
-	XOffset float32 `json:"xOffset"`
-	YOffset float32 `json:"yOffset"`
-	ZIndex  uint32  `json:"zIndex"`
-	XScale  float32 `json:"xScale"`
-	YScale  float32 `json:"yScale"`
+	XOffset float32 `json:"xOffset" gorm:"column:xOffset"`
+	YOffset float32 `json:"yOffset" gorm:"column:yOffset"`
+	ZIndex  uint32  `json:"zIndex" gorm:"column:zIndex"`
+	XScale  float32 `json:"xScale" gorm:"column:xScale"`
+	YScale  float32 `json:"yScale" gorm:"column:yScale"`
+}
+
+func (t *TransformDTO) TableName() string {
+	return "Transform"
 }
 
 type MinimizedAssetDTO struct {
