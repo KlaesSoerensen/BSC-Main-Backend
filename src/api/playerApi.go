@@ -150,8 +150,8 @@ func getPlayerInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 type ColonyModel struct {
 	ID          uint32 `gorm:"primaryKey"`
 	Name        string
-	AccLevel    uint32    `gorm:"column:AccLevel"`
-	LatestVisit time.Time `gorm:"column:lastestVisit"`
+	AccLevel    uint32    `gorm:"column:accLevel"`
+	LatestVisit time.Time `gorm:"column:latestVisit"`
 	ColonyCode  uint32    `gorm:"foreignKey:ColonyCode;references:ID;column:ColonyCode"`
 	// Player in PlayerDB
 	Owner     uint32
@@ -216,7 +216,6 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 		Transform         TransformDTO `json:"transform"`
 		AssetCollectionID uint32       `json:"assetCollectionID"`
 	}
-
 	colonyAssets := make([]AssetTransformTuple, 0, len(colony.Assets))
 	for _, colonyAssetID := range colony.Assets {
 		var transform TransformDTO
@@ -226,9 +225,13 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 			Where("id = ?", colonyAssetID)
 		if err := appContext.ColonyAssetDB.
 			Table("Transform").
-			Select("*").
-			Where("id = ?", subQuery).
+			Where("id = (?)", subQuery).
 			First(&transform).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.Response().Header.Set(appContext.DDH, "No such transform "+err.Error())
+				return fiber.NewError(fiber.StatusNotFound, "No such transform")
+			}
+
 			c.Response().Header.Set(appContext.DDH, "Error fetching transforms "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching transforms")
 		}
@@ -239,6 +242,11 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 			Select(`id`).
 			Where(`id = (SELECT id FROM "ColonyAsset" WHERE id = ?)`, colonyAssetID).
 			First(&assetCollection).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.Response().Header.Set(appContext.DDH, "No such AssetCollection "+err.Error())
+				return fiber.NewError(fiber.StatusNotFound, "No such AssetCollection")
+			}
+
 			c.Response().Header.Set(appContext.DDH, "Error fetching assetCollection id's "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching assetCollection id's")
 		}
@@ -258,21 +266,37 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 
 	colonyLocations := make([]LocationTransformTuple, 0, len(colony.Locations))
 	for _, colonyLocationID := range colony.Locations {
-		var location ColonyLocationModel
+		var colonyLocation ColonyLocationModel
 		if err := appContext.ColonyAssetDB.
 			Where(`id = ?`, colonyLocationID).
-			First(&location).Error; err != nil {
+			First(&colonyLocation).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.Response().Header.Set(appContext.DDH, "No such location "+err.Error())
+				return fiber.NewError(fiber.StatusNotFound, "No such location")
+			}
+
 			c.Response().Header.Set(appContext.DDH, "Error fetching location "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching location")
 		}
 
 		var transform TransformDTO
 		if err := appContext.ColonyAssetDB.
-			Where(`id = ?`, location.Transform).
+			Where(`id = ?`, colonyLocation.Transform).
 			First(&transform).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.Response().Header.Set(appContext.DDH, "No such transform "+err.Error())
+				return fiber.NewError(fiber.StatusNotFound, "No such transform")
+			}
+
 			c.Response().Header.Set(appContext.DDH, "Error fetching transforms "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching transforms")
 		}
+
+		colonyLocations = append(colonyLocations, LocationTransformTuple{
+			Transform:  transform,
+			LocationID: colonyLocation.Location,
+			Level:      colonyLocation.Level,
+		})
 	}
 
 	toReturn := struct {
