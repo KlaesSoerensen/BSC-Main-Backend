@@ -220,10 +220,14 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 	colonyAssets := make([]AssetTransformTuple, 0, len(colony.Assets))
 	for _, colonyAssetID := range colony.Assets {
 		var transform TransformDTO
+		subQuery := appContext.ColonyAssetDB.
+			Table("ColonyAsset").
+			Select("transform").
+			Where("id = ?", colonyAssetID)
 		if err := appContext.ColonyAssetDB.
 			Table("Transform").
-			Select(`*`).
-			Where(`id = (SELECT transform FROM "ColonyAsset" WHERE id = ?)`, colonyAssetID).
+			Select("*").
+			Where("id = ?", subQuery).
 			First(&transform).Error; err != nil {
 			c.Response().Header.Set(appContext.DDH, "Error fetching transforms "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching transforms")
