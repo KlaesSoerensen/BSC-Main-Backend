@@ -30,6 +30,8 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 	var body vitec.SessionInitiationDTO
 	//Extract request body
 	if err := c.BodyParser(&body); err != nil {
+		c.Status(fiber.StatusBadRequest)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 	//First of all, check if the auth header is present. If so, lookup in the cache and return if found
