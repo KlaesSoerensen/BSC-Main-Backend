@@ -38,6 +38,9 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 	existingAuthHeader := c.Request().Header.Peek(appContext.AuthTokenName)
 	if existingAuthHeader != nil {
 		if cacheEntry, exists := authService.SessionCache.Load(auth.SessionToken(existingAuthHeader)); exists && auth.IsSessionStillValid(cacheEntry.Entry) {
+
+			//update last checkin async
+			go auth.UpdateLastPlayerCheckin(cacheEntry.Entry, appContext)
 			//No need to check for cache entry expiry here, as the cache is checked for expiry on subsequent request
 			//Even if the cache is expired, the session is still valid
 			c.Status(fiber.StatusOK)
@@ -50,7 +53,6 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 	var idOfPreviousSession int = -1
 	//Check if player exists in PlayerDB - if so, all is well
 	if err := appContext.PlayerDB.Where(`"referenceID" = ?`, body.UserIdentifier).First(&player).Error; err != nil {
-
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Status(fiber.StatusInternalServerError)
 			middleware.LogRequests(c)
@@ -82,6 +84,8 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 			//A session exists, if still valid, just return the token
 			idOfPreviousSession = int(session.ID)
 			if auth.IsSessionStillValid(&session) {
+				//update last checkin async
+				go auth.UpdateLastPlayerCheckin(&session, appContext)
 				c.Status(fiber.StatusOK)
 				middleware.LogRequests(c)
 				return c.JSON(SessionInitiationResponseDTO{Token: string(session.Token)})

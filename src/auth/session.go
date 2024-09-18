@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"fmt"
+	"log"
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/util"
 	"time"
@@ -59,4 +60,11 @@ func generateBase32String(length int) (string, error) {
 		return "", err
 	}
 	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(bytes), nil
+}
+
+func UpdateLastPlayerCheckin(session *Session, appContext *meta.ApplicationContext) {
+	session.LastCheckIn = time.Now()
+	if updateErr := appContext.PlayerDB.Save(session).Error; updateErr != nil {
+		log.Println("[AUTH] INTERNAL ERROR: " + updateErr.Error())
+	}
 }
