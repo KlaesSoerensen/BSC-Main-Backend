@@ -48,7 +48,12 @@ func main() {
 	}
 
 	log.Println("[server] Starting server...")
-	log.Fatal(doTheTLSThing(servicePort, app))
+	useTLS := config.GetOr("ENABLE_TLS", "true") == "true"
+	if useTLS {
+		log.Fatal(doTheTLSThing(servicePort, app))
+	} else {
+		log.Fatal(listenHTTP(servicePort, app))
+	}
 }
 
 func doTheTLSThing(port ServicePort, app *fiber.App) error {
@@ -59,6 +64,11 @@ func doTheTLSThing(port ServicePort, app *fiber.App) error {
 		":"+strconv.FormatInt(port, 10),
 		"certs/otte_dev_cert.crt",
 		"certs/otte_dev_cert.key")
+}
+
+func listenHTTP(port ServicePort, app *fiber.App) error {
+	log.Println("[server] TLS DISABLED.")
+	return app.Listen(":" + strconv.FormatInt(port, 10))
 }
 
 type ServicePort = int64
