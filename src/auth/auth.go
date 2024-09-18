@@ -127,10 +127,10 @@ func fullSessionCheckAuth(authService *AuthService, c *fiber.Ctx, appContext *me
 	}
 	//Session exists and is valid:
 	authService.SessionCache.Store(session.Token, CacheEntry[Session]{Entry: &session, CreatedAt: time.Now()})
-
+	// update last checkin async
+	go UpdateLastPlayerCheckin(&session, appContext)
 	return nil
 }
-
 func naiveCheckForHeaderAuth(context *fiber.Ctx, tokenName string, defaultDebugHeader string) *fiber.Error {
 	authHeaderContent := context.Request().Header.Peek(tokenName)
 	if len(authHeaderContent) == 0 {
