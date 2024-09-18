@@ -376,6 +376,11 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 		colonyResponses = append(colonyResponses, toReturn)
 	}
 
+	if len(colonyResponses) == 0 {
+		c.Response().Header.Set(appContext.DDH, "Player has no colonies "+strconv.Itoa(fiber.StatusNotFound))
+		return fiber.NewError(fiber.StatusNotFound, "Player has no colonies")
+	}
+
 	// Prepare the colony overview response
 	overviewResponse := struct {
 		Colonies []interface{} `json:"colonies"`
