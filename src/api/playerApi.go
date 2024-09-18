@@ -319,62 +319,71 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 	return c.JSON(toReturn)
 }
 
-// Handler for fetching all colonies for a specific player
+// Handler for fetching an overview of all colonies for a player
 func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-	playerIdStr := c.Params("playerId")
-	playerId, parseErr := strconv.Atoi(playerIdStr)
-	if parseErr != nil {
-		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+parseErr.Error())
+	playerId, playerIdErr := c.ParamsInt("playerId")
+
+	if playerIdErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+playerIdErr.Error())
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID")
 	}
 
-	// Fetch all colonies for the player
-	var colonies []ColonyInfoResponse
+	// Fetch all colonies owned by the player, including assets and locations
+	var colonies []ColonyModel
 	if err := appContext.ColonyAssetDB.
-		Table("Colony").
 		Where("owner = ?", playerId).
 		Find(&colonies).Error; err != nil {
-
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Response().Header.Set(appContext.DDH, "No colonies found for player "+err.Error())
 			return fiber.NewError(fiber.StatusNotFound, "No colonies found for player")
 		}
-
 		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
-	// Fetch assets and locations for each colony
-	for i := range colonies {
-		colonyId := colonies[i].ID
+	// Prepare the response with the anonymous struct
+	var colonyResponses []interface{}
+	for _, colony := range colonies {
+		// Convert util.PGIntArray to []uint32 for assets and locations
+		assets := make([]uint32, len(colony.Assets))
+		locations := make([]uint32, len(colony.Locations))
 
-		// Fetch assets for this colony, including the TransformDTO automatically
-		var assets []ColonyAssetDTO
-		if err := appContext.ColonyAssetDB.
-			Preload("Transform"). // Preload the TransformDTO
-			Table("ColonyAsset").
-			Select(`colony, assetCollection, transform`). // Ensure transform (TransformID) is selected here
-			Where("colony = ?", colonyId).
-			Find(&assets).Error; err != nil {
-			c.Response().Header.Set(appContext.DDH, "Error fetching assets for colony "+strconv.Itoa(int(colonyId))+" "+err.Error())
-			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching assets for colony")
+		for i, id := range colony.Assets {
+			assets[i] = uint32(id)
 		}
-		colonies[i].Assets = assets
+		for i, id := range colony.Locations {
+			locations[i] = uint32(id)
+		}
 
-		// Fetch locations for this colony, including the TransformDTO automatically
-		var locations []ColonyLocationDTO
-		if err := appContext.ColonyAssetDB.
-			Preload("Transform"). // Preload the TransformDTO
-			Table("ColonyLocation").
-			Select(`colony, "level", assetCollection`). // Ensure colony is selected here
-			Where("colony = ?", colonyId).
-			Find(&locations).Error; err != nil {
-			c.Response().Header.Set(appContext.DDH, "Error fetching locations for colony "+strconv.Itoa(int(colonyId))+" "+err.Error())
-			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching locations for colony")
+		// Use the anonymous struct pattern to format the response
+		toReturn := struct {
+			ID          uint32    `json:"id"`
+			AccLevel    uint32    `json:"accLevel"`
+			Name        string    `json:"name"`
+			LatestVisit time.Time `json:"latestVisit"`
+			Assets      []uint32  `json:"assets"`
+			Locations   []uint32  `json:"locations"`
+		}{
+			ID:          colony.ID,
+			AccLevel:    colony.AccLevel,
+			Name:        colony.Name,
+			LatestVisit: colony.LatestVisit,
+			Assets:      assets,    // Converted to []uint32
+			Locations:   locations, // Converted to []uint32
 		}
-		colonies[i].Locations = locations
+
+		// Append each formatted colony data
+		colonyResponses = append(colonyResponses, toReturn)
 	}
 
+	// Prepare the colony overview response
+	overviewResponse := struct {
+		Colonies []interface{} `json:"colonies"`
+	}{
+		Colonies: colonyResponses,
+	}
+
+	// Return the response
 	c.Status(fiber.StatusOK)
-	return c.JSON(ColonyOverviewResponse{Colonies: colonies})
+	return c.JSON(overviewResponse)
 }
