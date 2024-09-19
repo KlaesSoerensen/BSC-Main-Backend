@@ -2,7 +2,7 @@
 FROM golang:1.23-alpine
 
 # Establishing internal workdir
-WORKDIR /otteBackendService
+WORKDIR /ursaBackendService
 
 # Copy go.mod and go.sum files to internal workdir
 COPY go.mod go.sum ./
@@ -17,7 +17,7 @@ RUN go mod download
 # Copy the entire project to internal workdir
 COPY . .
 # What the executable will be known as when containerized
-ARG _containerAlias="otteBackendService"
+ARG _containerAlias="ursaBackendService"
 
 # Compile - builds executable
 RUN ["go", "build", "-o", "$_containerAlias", "./src"]
