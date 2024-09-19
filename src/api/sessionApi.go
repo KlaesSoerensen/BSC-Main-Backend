@@ -36,7 +36,7 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 	}
 	//First of all, check if the auth header is present. If so, lookup in the cache and return if found
 	existingAuthHeader := c.Request().Header.Peek(appContext.AuthTokenName)
-	if existingAuthHeader != nil {
+	if len(existingAuthHeader) > 0 {
 		if cacheEntry, exists := authService.SessionCache.Load(auth.SessionToken(existingAuthHeader)); exists && auth.IsSessionStillValid(cacheEntry.Entry) {
 
 			//update last checkin async
