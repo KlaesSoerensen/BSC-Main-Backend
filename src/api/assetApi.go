@@ -21,8 +21,8 @@ type AssetResponse struct {
 	Type    string `json:"type"`
 	Width   uint32 `json:"width"`
 	Height  uint32 `json:"height"`
-	HasLODs bool   `json:"hasLODs" gorm:"column:hasLODs"`
 	/** DEPRECATED see explanation in lodAPI.go
+	HasLODs bool   `json:"hasLODs" gorm:"column:hasLODs"`
 	Blob    []byte       `json:"blob"`
 	*/
 	Alias string       `json:"alias"`
