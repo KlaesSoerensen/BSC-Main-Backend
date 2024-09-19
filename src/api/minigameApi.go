@@ -25,17 +25,17 @@ type MinigameDifficultyDTO struct {
 	OverwritingSettings string `json:"overwritingSettings" gorm:"column:overwritingSettings"`
 }
 
-func (mdDTO *MinigameDifficultyDTO) TableName() string {
+func (mdDTO *MinigameDifficultyLocationDTO) TableName() string {
 	return "MiniGameDifficulty"
 }
 
 type MinigameInfoDTO struct {
-	ID           uint32                  `json:"id"`
-	Name         string                  `json:"name"`
-	Icon         uint32                  `json:"icon"`
-	Description  string                  `json:"description"`
-	Settings     string                  `json:"settings"`
-	Difficulties []MinigameDifficultyDTO `json:"difficulties" gorm:"foreignKey:MinigameID;references:ID"`
+	ID           uint32                          `json:"id"`
+	Name         string                          `json:"name"`
+	Icon         uint32                          `json:"icon"`
+	Description  string                          `json:"description"`
+	Settings     string                          `json:"settings"`
+	Difficulties []MinigameDifficultyLocationDTO `json:"difficulties" gorm:"foreignKey:MinigameID;references:ID"`
 }
 
 func (mInfoDTO *MinigameInfoDTO) TableName() string {
