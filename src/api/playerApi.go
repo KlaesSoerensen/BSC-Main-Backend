@@ -74,6 +74,9 @@ func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	// Route for fetching overview of all colonies for a player
 	app.Get("/api/v1/player/:playerId/colonies", auth.PrefixOn(appContext, getColonyOverviewHandler))
 
+	// Route for creating a new colony
+	app.Post("/api/v1/player/:playerId/colony/create", auth.PrefixOn(appContext, createColonyHandler)) // <-- New Route
+
 	return nil
 }
 
@@ -152,7 +155,7 @@ type ColonyModel struct {
 	Name        string
 	AccLevel    uint32    `gorm:"column:accLevel"`
 	LatestVisit time.Time `gorm:"column:latestVisit"`
-	ColonyCode  uint32    `gorm:"foreignKey:ColonyCode;references:ID;column:ColonyCode"`
+	ColonyCode  uint32    `gorm:"foreignKey:ColonyCode;references:ID;column:colonyCode"`
 	// Player in PlayerDB
 	Owner     uint32
 	Assets    util.PGIntArray
@@ -391,4 +394,61 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	// Return the response
 	c.Status(fiber.StatusOK)
 	return c.JSON(overviewResponse)
+}
+
+// Handler for creating a new colony with bare essentials
+func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	// Get playerId from URL parameters
+	playerId, playerIdErr := c.ParamsInt("playerId")
+	if playerIdErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+playerIdErr.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID")
+	}
+
+	// Parse request body for optional colony name
+	type CreateColonyRequest struct {
+		Name string `json:"name,omitempty"`
+	}
+	var request CreateColonyRequest
+	if err := c.BodyParser(&request); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	// Default name if not provided
+	colonyName := request.Name
+	if colonyName == "" {
+		colonyName = "DATA.UNNAMED.COLONY"
+	}
+
+	// Prepare the new colony with default values
+	newColony := ColonyModel{
+		Name:        colonyName,
+		Owner:       uint32(playerId), // Set the player as the owner
+		AccLevel:    0,                // Default access level
+		LatestVisit: time.Now(),       // Set current time as latest visit
+		Assets:      make([]int, 0),   // Empty assets array
+		Locations:   make([]int, 0),   // Empty locations array
+	}
+
+	// Save the new colony to the database
+	if err := appContext.ColonyAssetDB.Create(&newColony).Error; err != nil {
+		c.Response().Header.Set(appContext.DDH, "Error creating colony "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Error creating colony")
+	}
+
+	// Return the newly created colony details
+	toReturn := struct {
+		ID          uint32    `json:"id"`
+		Name        string    `json:"name"`
+		AccLevel    uint32    `json:"accLevel"`
+		LatestVisit time.Time `json:"latestVisit"`
+	}{
+		ID:          newColony.ID,
+		Name:        newColony.Name,
+		AccLevel:    newColony.AccLevel,
+		LatestVisit: newColony.LatestVisit,
+	}
+
+	c.Status(fiber.StatusOK)
+	return c.JSON(toReturn)
 }
