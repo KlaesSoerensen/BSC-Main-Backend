@@ -344,8 +344,16 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
+	type ColonyData struct {
+		ID          uint32    `json:"id"`
+		AccLevel    uint32    `json:"accLevel"`
+		Name        string    `json:"name"`
+		LatestVisit time.Time `json:"latestVisit"`
+		Assets      []uint32  `json:"assets"`
+		Locations   []uint32  `json:"locations"`
+	}
 	// Prepare the response with the anonymous struct
-	var colonyResponses []interface{}
+	var colonyResponses = make([]ColonyData, 0, len(colonies))
 	for _, colony := range colonies {
 		// Convert util.PGIntArray to []uint32 for assets and locations
 		assets := make([]uint32, len(colony.Assets))
@@ -358,35 +366,20 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 			locations[i] = uint32(id)
 		}
 
-		// Use the anonymous struct pattern to format the response
-		toReturn := struct {
-			ID          uint32    `json:"id"`
-			AccLevel    uint32    `json:"accLevel"`
-			Name        string    `json:"name"`
-			LatestVisit time.Time `json:"latestVisit"`
-			Assets      []uint32  `json:"assets"`
-			Locations   []uint32  `json:"locations"`
-		}{
+		// Append each formatted colony data
+		colonyResponses = append(colonyResponses, ColonyData{
 			ID:          colony.ID,
 			AccLevel:    colony.AccLevel,
 			Name:        colony.Name,
 			LatestVisit: colony.LatestVisit,
 			Assets:      assets,    // Converted to []uint32
 			Locations:   locations, // Converted to []uint32
-		}
-
-		// Append each formatted colony data
-		colonyResponses = append(colonyResponses, toReturn)
-	}
-
-	if len(colonyResponses) == 0 {
-		c.Response().Header.Set(appContext.DDH, "Player has no colonies "+strconv.Itoa(fiber.StatusNotFound))
-		return fiber.NewError(fiber.StatusNotFound, "Player has no colonies")
+		})
 	}
 
 	// Prepare the colony overview response
 	overviewResponse := struct {
-		Colonies []interface{} `json:"colonies"`
+		Colonies []ColonyData `json:"colonies"`
 	}{
 		Colonies: colonyResponses,
 	}
