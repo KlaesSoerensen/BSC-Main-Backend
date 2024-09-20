@@ -9,6 +9,27 @@ import (
 	"gorm.io/gorm"
 )
 
+func applyLocationApi(app *fiber.App, appContext *meta.ApplicationContext) error {
+	log.Println("[Location API] Applying location API")
+
+	// Route for fetching basic location info by locationID
+	app.Get("/api/v1/location/:locationID", getLocationInfoHandler(appContext))
+
+	// Route for fetching full location info by locationID
+	app.Get("/api/v1/location/:locationID/full", getLocationFullInfoHandler(appContext))
+
+	return nil
+}
+
+// LocationFullInfoResponse represents the full location data
+type LocationFullInfoResponse struct {
+	ID          uint32                  `json:"id"`
+	Name        string                  `json:"name"`
+	Description string                  `json:"description"`
+	Appearances []LocationAppearanceDTO `json:"appearances"`
+	Minigame    MinigameDTO             `json:"minigame"`
+}
+
 type LocationAppearanceDTO struct {
 	Level  uint32 `json:"level"`
 	Assets []struct {
@@ -17,7 +38,20 @@ type LocationAppearanceDTO struct {
 	} `json:"assets"`
 }
 
-// New TransformDTO (removed 'id' field)
+type MinimizedAssetLocationDTO struct {
+	ID     uint32        `json:"id"`
+	Width  int           `json:"width"`
+	Height int           `json:"height"`
+	Alias  string        `json:"alias"`
+	Type   string        `json:"type"`
+	LODs   []AssetLODDTO `json:"LODs"`
+}
+
+type AssetLODDTO struct {
+	DetailLevel uint32 `json:"detailLevel"`
+	ID          uint32 `json:"id"`
+}
+
 type TransformLocationDTO struct {
 	XScale  float32 `json:"xScale"`
 	YScale  float32 `json:"yScale"`
@@ -26,59 +60,132 @@ type TransformLocationDTO struct {
 	ZIndex  uint32  `json:"zIndex"`
 }
 
-// LocationInfoResponse represents the data for a location
-type LocationInfoResponse struct {
-	ID          uint32                  `json:"id"`
-	Name        string                  `json:"name"`
-	Description string                  `json:"description"`
-	Appearances []LocationAppearanceDTO `json:"appearances"`
-	MinigameID  uint32                  `json:"minigameID"`
+type MinigameDTO struct {
+	ID           uint32                          `json:"id"`
+	Name         string                          `json:"name"`
+	Description  string                          `json:"description"`
+	IconID       uint32                          `json:"iconID"`
+	Difficulties []MinigameDifficultyLocationDTO `json:"difficulties"`
 }
 
-func applyLocationApi(app *fiber.App, appContext *meta.ApplicationContext) error {
-	log.Println("[Location API] Applying location API")
-
-	// Route for fetching location info by locationID
-	app.Get("/api/v1/location/:locationID", getLocationInfoHandler(appContext))
-
-	// Route for fetching full location info by locationID (existing route)
-	app.Get("/api/v1/location/:locationID/full", getLocationFullInfoHandler(appContext))
-
-	return nil
+type MinigameDifficultyLocationDTO struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IconID      uint32 `json:"iconID"`
 }
 
-type BasicLocationInfoModel struct {
-	ID          uint32                             `gorm:"column:id;primaryKey"`
-	Name        string                             `gorm:"column:name"`
-	Description string                             `gorm:"column:description"`
-	MinigameID  uint32                             `gorm:"column:minigame"`
-	Appearances []BasicLocationAppearanceInfoModel `gorm:"foreignKey:location"`
+// LocationModel represents the Location table
+type LocationModel struct {
+	ID          uint32                    `gorm:"column:id;primaryKey"`
+	Name        string                    `gorm:"column:name"`
+	Description string                    `gorm:"column:description"`
+	MinigameID  uint32                    `gorm:"column:minigame"`
+	Minigame    MinigameModel             `gorm:"foreignKey:MinigameID"`
+	Appearances []LocationAppearanceModel `gorm:"foreignKey:LocationID"`
 }
 
-func (BasicLocationInfoModel) TableName() string {
+func (LocationModel) TableName() string {
 	return "Location"
 }
 
-type BasicLocationAppearanceInfoModel struct {
-	ID                uint32 `gorm:"column:id;primaryKey"`
-	Level             int    `gorm:"column:level"`
-	LocationID        uint32 `gorm:"column:location"`
-	AssetCollectionID uint32 `gorm:"column:assetCollection"`
+type LocationAppearanceModel struct {
+	ID                uint32               `gorm:"column:id;primaryKey"`
+	Level             int                  `gorm:"column:level"`
+	LocationID        uint32               `gorm:"column:location"`
+	AssetCollectionID uint32               `gorm:"column:assetCollection"`
+	AssetCollection   AssetCollectionModel `gorm:"foreignKey:AssetCollectionID"`
 }
 
-func (BasicLocationAppearanceInfoModel) TableName() string {
+func (LocationAppearanceModel) TableName() string {
 	return "LocationAppearance"
 }
 
-type BasicLocationInfoResponse struct {
-	ID          uint32 `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Appearances []struct {
-		Level             uint32 `json:"level"`
-		AssetCollectionID uint32 `json:"assetCollectionID"`
-	} `json:"appearances"`
-	MinigameID uint32 `json:"minigameID"`
+type AssetCollectionModel struct {
+	ID                uint32                 `gorm:"column:id;primaryKey"`
+	Name              string                 `gorm:"column:name"`
+	UseCase           string                 `gorm:"column:useCase"`
+	CollectionEntries []CollectionEntryModel `gorm:"foreignKey:AssetCollectionID"`
+}
+
+func (AssetCollectionModel) TableName() string {
+	return "AssetCollection"
+}
+
+type CollectionEntryModel struct {
+	ID                uint32              `gorm:"column:id;primaryKey"`
+	GraphicalAssetID  uint32              `gorm:"column:graphicalAsset"`
+	GraphicalAsset    GraphicalAssetModel `gorm:"foreignKey:GraphicalAssetID"`
+	TransformID       uint32              `gorm:"column:transform"`
+	Transform         TransformModel      `gorm:"foreignKey:TransformID"`
+	AssetCollectionID uint32              `gorm:"column:assetCollection"`
+}
+
+func (CollectionEntryModel) TableName() string {
+	return "CollectionEntry"
+}
+
+type GraphicalAssetModel struct {
+	ID      uint32     `gorm:"column:id;primaryKey"`
+	Alias   string     `gorm:"column:alias"`
+	Type    string     `gorm:"column:type"`
+	UseCase string     `gorm:"column:useCase"`
+	Width   int        `gorm:"column:width"`
+	Height  int        `gorm:"column:height"`
+	LODs    []LODModel `gorm:"foreignKey:GraphicalAssetID"`
+}
+
+func (GraphicalAssetModel) TableName() string {
+	return "GraphicalAsset"
+}
+
+type LODModel struct {
+	ID               uint32 `gorm:"column:id;primaryKey"`
+	DetailLevel      int    `gorm:"column:detailLevel"`
+	Type             string `gorm:"column:type"`
+	GraphicalAssetID uint32 `gorm:"column:graphicalAsset"`
+}
+
+func (LODModel) TableName() string {
+	return "LOD"
+}
+
+type TransformModel struct {
+	ID      uint32  `gorm:"column:id;primaryKey"`
+	XScale  float32 `gorm:"column:xScale"`
+	YScale  float32 `gorm:"column:yScale"`
+	XOffset float32 `gorm:"column:xOffset"`
+	YOffset float32 `gorm:"column:yOffset"`
+	ZIndex  int     `gorm:"column:zIndex"`
+}
+
+func (TransformModel) TableName() string {
+	return "Transform"
+}
+
+type MinigameModel struct {
+	ID           uint32                    `gorm:"column:id;primaryKey"`
+	Name         string                    `gorm:"column:name"`
+	Description  string                    `gorm:"column:description"`
+	IconID       uint32                    `gorm:"column:icon"`
+	Icon         GraphicalAssetModel       `gorm:"foreignKey:IconID"`
+	Difficulties []MinigameDifficultyModel `gorm:"foreignKey:MinigameID"`
+}
+
+func (MinigameModel) TableName() string {
+	return "MiniGame"
+}
+
+type MinigameDifficultyModel struct {
+	ID          uint32              `gorm:"column:id;primaryKey"`
+	Name        string              `gorm:"column:name"`
+	Description string              `gorm:"column:description"`
+	IconID      uint32              `gorm:"column:icon"`
+	Icon        GraphicalAssetModel `gorm:"foreignKey:IconID"`
+	MinigameID  uint32              `gorm:"column:minigame"`
+}
+
+func (MinigameDifficultyModel) TableName() string {
+	return "MiniGameDifficulty"
 }
 
 func getLocationInfoHandler(appContext *meta.ApplicationContext) fiber.Handler {
@@ -89,7 +196,7 @@ func getLocationInfoHandler(appContext *meta.ApplicationContext) fiber.Handler {
 			return fiber.NewError(fiber.StatusBadRequest, "Invalid location ID")
 		}
 
-		var location BasicLocationInfoModel
+		var location LocationModel
 		if err := appContext.ColonyAssetDB.
 			Preload("Appearances").
 			Where("id = ?", locationID).
@@ -117,7 +224,16 @@ func getLocationInfoHandler(appContext *meta.ApplicationContext) fiber.Handler {
 			}
 		}
 
-		response := BasicLocationInfoResponse{
+		response := struct {
+			ID          uint32 `json:"id"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Appearances []struct {
+				Level             uint32 `json:"level"`
+				AssetCollectionID uint32 `json:"assetCollectionID"`
+			} `json:"appearances"`
+			MinigameID uint32 `json:"minigameID"`
+		}{
 			ID:          location.ID,
 			Name:        location.Name,
 			Description: location.Description,
@@ -129,175 +245,31 @@ func getLocationInfoHandler(appContext *meta.ApplicationContext) fiber.Handler {
 	}
 }
 
-// LocationModel represents the Location table
-type LocationModel struct {
-	ID          uint32 `gorm:"primaryKey"`
-	Name        string
-	Description string
-	MinigameID  uint32                    `gorm:"column:minigame"`
-	Minigame    MinigameModel             `gorm:"foreignKey:MinigameID;references:ID"`
-	Appearances []LocationAppearanceModel `gorm:"foreignKey:LocationID;references:ID"`
-}
-
-func (l *LocationModel) TableName() string {
-	return "Location"
-}
-
-// MinigameDTO represents detailed minigame information
-type MinigameDTO struct {
-	ID           uint32                          `json:"id"`
-	Name         string                          `json:"name"`
-	Description  string                          `json:"description"`
-	IconID       uint32                          `json:"iconID"`
-	Difficulties []MinigameDifficultyLocationDTO `json:"difficulties"`
-}
-
-// LocationFullInfoResponse represents the full location data
-type LocationFullInfoResponse struct {
-	ID          uint32                  `json:"id"`
-	Name        string                  `json:"name"`
-	Description string                  `json:"description"`
-	Appearances []LocationAppearanceDTO `json:"appearances"`
-	Minigame    MinigameDTO             `json:"minigame"`
-}
-
-type MinigameModel struct {
-	ID           uint32 `gorm:"primaryKey"`
-	Name         string
-	Description  string
-	IconID       uint32                    `gorm:"column:icon"`
-	Icon         GraphicalAssetModel       `gorm:"foreignKey:IconID"`
-	Difficulties []MinigameDifficultyModel `gorm:"foreignKey:MinigameID"`
-}
-
-func (MinigameModel) TableName() string {
-	return "MiniGame"
-}
-
-type MinigameDifficultyModel struct {
-	ID          uint32 `gorm:"primaryKey"`
-	Name        string
-	Description string
-	IconID      uint32              `gorm:"column:icon"`
-	Icon        GraphicalAssetModel `gorm:"foreignKey:IconID"`
-	MinigameID  uint32              `gorm:"column:minigame"`
-}
-
-func (MinigameDifficultyModel) TableName() string {
-	return "MiniGameDifficulty" // Matches the database table name
-}
-
-// MinigameDifficultyLocationDTO represents minigame difficulties
-type MinigameDifficultyLocationDTO struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	IconID      uint32 `json:"iconID"`
-}
-
-// GraphicalAssetModel represents the GraphicalAsset table
-type GraphicalAssetModel struct {
-	ID      uint32 `gorm:"primaryKey"`
-	Alias   string
-	Type    string
-	UseCase string `gorm:"column:useCase"`
-	Width   int
-	Height  int
-}
-
-func (GraphicalAssetModel) TableName() string {
-	return "GraphicalAsset" // Matches the database table name
-}
-
-// LocationAppearanceModel represents the LocationAppearance table
-type LocationAppearanceModel struct {
-	ID                uint32 `gorm:"primaryKey"`
-	Level             uint32
-	LocationID        uint32               `gorm:"column:location"`
-	AssetCollectionID uint32               `gorm:"column:assetCollection"`
-	AssetCollection   AssetCollectionModel `gorm:"foreignKey:AssetCollectionID;references:ID"`
-}
-
-func (LocationAppearanceModel) TableName() string {
-	return "LocationAppearance" // Matches the database table name
-}
-
-type AssetCollectionModel struct {
-	ID                uint32 `gorm:"primaryKey"`
-	Name              string
-	UseCase           string                 `gorm:"column:useCase"`
-	CollectionEntries []CollectionEntryModel `gorm:"foreignKey:AssetCollectionID;references:ID"`
-}
-
-func (AssetCollectionModel) TableName() string {
-	return "AssetCollection" // Matches the database table name
-}
-
-type CollectionEntryModel struct {
-	ID                uint32              `gorm:"primaryKey"`
-	GraphicalAssetID  uint32              `gorm:"column:graphicalAsset"`
-	GraphicalAsset    GraphicalAssetModel `gorm:"foreignKey:GraphicalAssetID;references:ID"`
-	TransformID       uint32              `gorm:"column:transform"`
-	Transform         TransformModel      `gorm:"foreignKey:TransformID;references:ID"`
-	AssetCollectionID uint32              `gorm:"column:assetCollection"`
-}
-
-func (CollectionEntryModel) TableName() string {
-	return "CollectionEntry" // Matches the database table name
-}
-
-// TransformModel represents the Transform table
-type TransformModel struct {
-	ID      uint32  `gorm:"primaryKey;column:id" json:"id"`
-	XScale  float32 `gorm:"column:xScale" json:"xScale"`
-	YScale  float32 `gorm:"column:yScale" json:"yScale"`
-	XOffset float32 `gorm:"column:xOffset" json:"xOffset"`
-	YOffset float32 `gorm:"column:yOffset" json:"yOffset"`
-	ZIndex  int     `gorm:"column:zIndex" json:"zIndex"`
-}
-
-func (TransformModel) TableName() string {
-	return "Transform" // Matches the database table name
-}
-
-// MinimizedAssetLocationDTO represents an asset with minimal information
-type MinimizedAssetLocationDTO struct {
-	ID     uint32 `json:"id"`
-	Alias  string `json:"alias"`
-	Type   string `json:"type"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-}
-
+// Handler for full location info
 func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Get locationID from the URL
-		locationID, locationIDErr := c.ParamsInt("locationID")
-		if locationIDErr != nil {
-			c.Response().Header.Set(appContext.DDH, "Invalid location ID "+locationIDErr.Error())
+		locationID, err := c.ParamsInt("locationID")
+		if err != nil {
+			c.Response().Header.Set(appContext.DDH, "Invalid location ID "+err.Error())
 			return fiber.NewError(fiber.StatusBadRequest, "Invalid location ID")
 		}
 
 		var location LocationModel
 		if err := appContext.ColonyAssetDB.
-			Preload("Minigame").
 			Preload("Minigame.Icon").
-			Preload("Minigame.Difficulties").
 			Preload("Minigame.Difficulties.Icon").
-			Preload("Appearances.AssetCollection.CollectionEntries.GraphicalAsset").
+			Preload("Appearances.AssetCollection.CollectionEntries.GraphicalAsset.LODs").
 			Preload("Appearances.AssetCollection.CollectionEntries.Transform").
 			Where("id = ?", locationID).
 			First(&location).Error; err != nil {
-
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.Response().Header.Set(appContext.DDH, "Location not found "+err.Error())
 				return fiber.NewError(fiber.StatusNotFound, "Location not found")
 			}
-
 			c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 		}
 
-		// Prepare the appearances response
 		appearances := make([]LocationAppearanceDTO, len(location.Appearances))
 		for i, appearance := range location.Appearances {
 			assets := make([]struct {
@@ -306,6 +278,14 @@ func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handl
 			}, len(appearance.AssetCollection.CollectionEntries))
 
 			for j, entry := range appearance.AssetCollection.CollectionEntries {
+				lods := make([]AssetLODDTO, len(entry.GraphicalAsset.LODs))
+				for k, lod := range entry.GraphicalAsset.LODs {
+					lods[k] = AssetLODDTO{
+						DetailLevel: uint32(lod.DetailLevel),
+						ID:          lod.ID,
+					}
+				}
+
 				assets[j] = struct {
 					Transform TransformLocationDTO      `json:"transform"`
 					Asset     MinimizedAssetLocationDTO `json:"asset"`
@@ -319,16 +299,17 @@ func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handl
 					},
 					Asset: MinimizedAssetLocationDTO{
 						ID:     entry.GraphicalAsset.ID,
-						Alias:  entry.GraphicalAsset.Alias,
-						Type:   entry.GraphicalAsset.Type,
 						Width:  entry.GraphicalAsset.Width,
 						Height: entry.GraphicalAsset.Height,
+						Alias:  entry.GraphicalAsset.Alias,
+						Type:   entry.GraphicalAsset.Type,
+						LODs:   lods,
 					},
 				}
 			}
 
 			appearances[i] = LocationAppearanceDTO{
-				Level:  appearance.Level,
+				Level:  uint32(appearance.Level),
 				Assets: assets,
 			}
 		}
@@ -337,7 +318,7 @@ func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handl
 			ID:           location.Minigame.ID,
 			Name:         location.Minigame.Name,
 			Description:  location.Minigame.Description,
-			IconID:       location.Minigame.IconID, // Use IconID from Minigame
+			IconID:       location.Minigame.IconID,
 			Difficulties: []MinigameDifficultyLocationDTO{},
 		}
 
@@ -345,11 +326,11 @@ func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handl
 			minigame.Difficulties = append(minigame.Difficulties, MinigameDifficultyLocationDTO{
 				Name:        difficulty.Name,
 				Description: difficulty.Description,
-				IconID:      difficulty.IconID, // Use IconID from Difficulty
+				IconID:      difficulty.IconID,
 			})
 		}
 
-		toReturn := LocationFullInfoResponse{
+		response := LocationFullInfoResponse{
 			ID:          location.ID,
 			Name:        location.Name,
 			Description: location.Description,
@@ -357,7 +338,6 @@ func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handl
 			Minigame:    minigame,
 		}
 
-		c.Status(fiber.StatusOK)
-		return c.JSON(toReturn)
+		return c.JSON(response)
 	}
 }
