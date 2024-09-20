@@ -10,12 +10,20 @@ import (
 )
 
 type LocationAppearanceDTO struct {
-	Level             uint32 `json:"level"`
-	AssetCollectionID uint32 `json:"assetCollectionID" gorm:"column:assetCollection"`
-	Assets            []struct {
-		Transform TransformDTO              `json:"transform"`
+	Level  uint32 `json:"level"`
+	Assets []struct {
+		Transform TransformLocationDTO      `json:"transform"`
 		Asset     MinimizedAssetLocationDTO `json:"asset"`
 	} `json:"assets"`
+}
+
+// New TransformDTO (removed 'id' field)
+type TransformLocationDTO struct {
+	XScale  float32 `json:"xScale"`
+	YScale  float32 `json:"yScale"`
+	XOffset float32 `json:"xOffset"`
+	YOffset float32 `json:"yOffset"`
+	ZIndex  uint32  `json:"zIndex"`
 }
 
 // LocationInfoResponse represents the data for a location
@@ -125,22 +133,22 @@ type MinigameModel struct {
 	ID           uint32 `gorm:"primaryKey"`
 	Name         string
 	Description  string
-	IconID       uint32                    `gorm:"foreignKey:IconID"`
-	Icon         GraphicalAssetModel       `gorm:"foreignKey:IconID;references:ID"`
-	Difficulties []MinigameDifficultyModel `gorm:"foreignKey:MinigameID;references:ID"` // Define the foreign key
+	IconID       uint32                    `gorm:"column:icon"`
+	Icon         GraphicalAssetModel       `gorm:"foreignKey:IconID"`
+	Difficulties []MinigameDifficultyModel `gorm:"foreignKey:MinigameID"`
 }
 
 func (MinigameModel) TableName() string {
-	return "MiniGame" // Matches the database table name
+	return "MiniGame"
 }
 
 type MinigameDifficultyModel struct {
 	ID          uint32 `gorm:"primaryKey"`
 	Name        string
 	Description string
-	IconID      uint32              `gorm:"foreignKey:IconID"`
-	Icon        GraphicalAssetModel `gorm:"foreignKey:IconID;references:ID"`
-	MinigameID  uint32              `gorm:"column:minigame"` // This is the foreign key field
+	IconID      uint32              `gorm:"column:icon"`
+	Icon        GraphicalAssetModel `gorm:"foreignKey:IconID"`
+	MinigameID  uint32              `gorm:"column:minigame"`
 }
 
 func (MinigameDifficultyModel) TableName() string {
@@ -237,10 +245,11 @@ func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handl
 			return fiber.NewError(fiber.StatusBadRequest, "Invalid location ID")
 		}
 
-		// Fetch the location information, including minigame and appearances
 		var location LocationModel
 		if err := appContext.ColonyAssetDB.
+			Preload("Minigame").
 			Preload("Minigame.Icon").
+			Preload("Minigame.Difficulties").
 			Preload("Minigame.Difficulties.Icon").
 			Preload("Appearances.AssetCollection.CollectionEntries.GraphicalAsset").
 			Preload("Appearances.AssetCollection.CollectionEntries.Transform").
@@ -260,16 +269,16 @@ func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handl
 		appearances := make([]LocationAppearanceDTO, len(location.Appearances))
 		for i, appearance := range location.Appearances {
 			assets := make([]struct {
-				Transform TransformDTO              `json:"transform"`
+				Transform TransformLocationDTO      `json:"transform"`
 				Asset     MinimizedAssetLocationDTO `json:"asset"`
 			}, len(appearance.AssetCollection.CollectionEntries))
 
 			for j, entry := range appearance.AssetCollection.CollectionEntries {
 				assets[j] = struct {
-					Transform TransformDTO              `json:"transform"`
+					Transform TransformLocationDTO      `json:"transform"`
 					Asset     MinimizedAssetLocationDTO `json:"asset"`
 				}{
-					Transform: TransformDTO{
+					Transform: TransformLocationDTO{
 						XScale:  entry.Transform.XScale,
 						YScale:  entry.Transform.YScale,
 						XOffset: entry.Transform.XOffset,
@@ -292,25 +301,22 @@ func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handl
 			}
 		}
 
-		// Prepare the minigame response
 		minigame := MinigameDTO{
 			ID:           location.Minigame.ID,
 			Name:         location.Minigame.Name,
 			Description:  location.Minigame.Description,
-			IconID:       location.Minigame.Icon.ID,
+			IconID:       location.Minigame.IconID, // Use IconID from Minigame
 			Difficulties: []MinigameDifficultyLocationDTO{},
 		}
 
-		// Handle difficulties
 		for _, difficulty := range location.Minigame.Difficulties {
 			minigame.Difficulties = append(minigame.Difficulties, MinigameDifficultyLocationDTO{
 				Name:        difficulty.Name,
 				Description: difficulty.Description,
-				IconID:      difficulty.Icon.ID,
+				IconID:      difficulty.IconID, // Use IconID from Difficulty
 			})
 		}
 
-		// Prepare the full location response
 		toReturn := LocationFullInfoResponse{
 			ID:          location.ID,
 			Name:        location.Name,
