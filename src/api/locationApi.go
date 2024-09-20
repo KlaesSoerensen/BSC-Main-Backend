@@ -35,65 +35,97 @@ type LocationInfoResponse struct {
 	MinigameID  uint32                  `json:"minigameID"`
 }
 
-// Apply the Location API routes
 func applyLocationApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Location API] Applying location API")
 
 	// Route for fetching location info by locationID
 	app.Get("/api/v1/location/:locationID", getLocationInfoHandler(appContext))
 
-	// Route for fetching full location info by locationID
-	app.Get("/api/v1/location/:locationID/full", getLocationFullInfoHandler(appContext)) // <-- New Route
+	// Route for fetching full location info by locationID (existing route)
+	app.Get("/api/v1/location/:locationID/full", getLocationFullInfoHandler(appContext))
 
 	return nil
 }
 
-// Handler for fetching location info by locationID
+type BasicLocationInfoModel struct {
+	ID          uint32                             `gorm:"column:id;primaryKey"`
+	Name        string                             `gorm:"column:name"`
+	Description string                             `gorm:"column:description"`
+	MinigameID  uint32                             `gorm:"column:minigame"`
+	Appearances []BasicLocationAppearanceInfoModel `gorm:"foreignKey:location"`
+}
+
+func (BasicLocationInfoModel) TableName() string {
+	return "Location"
+}
+
+type BasicLocationAppearanceInfoModel struct {
+	ID                uint32 `gorm:"column:id;primaryKey"`
+	Level             int    `gorm:"column:level"`
+	LocationID        uint32 `gorm:"column:location"`
+	AssetCollectionID uint32 `gorm:"column:assetCollection"`
+}
+
+func (BasicLocationAppearanceInfoModel) TableName() string {
+	return "LocationAppearance"
+}
+
+type BasicLocationInfoResponse struct {
+	ID          uint32 `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Appearances []struct {
+		Level             uint32 `json:"level"`
+		AssetCollectionID uint32 `json:"assetCollectionID"`
+	} `json:"appearances"`
+	MinigameID uint32 `json:"minigameID"`
+}
+
 func getLocationInfoHandler(appContext *meta.ApplicationContext) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Get locationID from the URL
-		locationID, locationIDErr := c.ParamsInt("locationID")
-		if locationIDErr != nil {
-			c.Response().Header.Set(appContext.DDH, "Invalid location ID "+locationIDErr.Error())
+		locationID, err := c.ParamsInt("locationID")
+		if err != nil {
+			c.Response().Header.Set(appContext.DDH, "Invalid location ID "+err.Error())
 			return fiber.NewError(fiber.StatusBadRequest, "Invalid location ID")
 		}
 
-		// Fetch the location information
-		var location LocationModel
+		var location BasicLocationInfoModel
 		if err := appContext.ColonyAssetDB.
+			Preload("Appearances").
 			Where("id = ?", locationID).
 			First(&location).Error; err != nil {
-
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				c.Response().Header.Set(appContext.DDH, "Location not found "+err.Error())
 				return fiber.NewError(fiber.StatusNotFound, "Location not found")
 			}
-
 			c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 		}
 
-		// Fetch the location appearances
-		var appearances []LocationAppearanceDTO
-		if err := appContext.ColonyAssetDB.
-			Table("LocationAppearance").
-			Where("location = ?", locationID).
-			Find(&appearances).Error; err != nil {
-			c.Response().Header.Set(appContext.DDH, "Error fetching location appearances "+err.Error())
-			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching location appearances")
+		appearances := make([]struct {
+			Level             uint32 `json:"level"`
+			AssetCollectionID uint32 `json:"assetCollectionID"`
+		}, len(location.Appearances))
+
+		for i, appearance := range location.Appearances {
+			appearances[i] = struct {
+				Level             uint32 `json:"level"`
+				AssetCollectionID uint32 `json:"assetCollectionID"`
+			}{
+				Level:             uint32(appearance.Level),
+				AssetCollectionID: appearance.AssetCollectionID,
+			}
 		}
 
-		// Prepare the response
-		toReturn := LocationInfoResponse{
+		response := BasicLocationInfoResponse{
 			ID:          location.ID,
 			Name:        location.Name,
 			Description: location.Description,
 			Appearances: appearances,
-			MinigameID:  location.MinigameID, // Assuming minigameID is stored in LocationModel
+			MinigameID:  location.MinigameID,
 		}
 
-		c.Status(fiber.StatusOK)
-		return c.JSON(toReturn)
+		return c.JSON(response)
 	}
 }
 
