@@ -75,7 +75,7 @@ func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	app.Get("/api/v1/player/:playerId/colonies", auth.PrefixOn(appContext, getColonyOverviewHandler))
 
 	// Route for creating a new colony
-	app.Post("/api/v1/player/:playerId/colony/create", auth.PrefixOn(appContext, createColonyHandler)) // <-- New Route
+	app.Post("/api/v1/player/:playerId/colony/create", auth.PrefixOn(appContext, createColonyHandler))
 
 	return nil
 }
