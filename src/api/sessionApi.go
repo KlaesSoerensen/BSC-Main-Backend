@@ -14,7 +14,8 @@ import (
 )
 
 type SessionInitiationResponseDTO struct {
-	Token string `json:"token"`
+	Token      string `json:"token"`
+	InternalID uint32 `json:"internalID"`
 }
 
 func applySessionApi(app *fiber.App, appContext *meta.ApplicationContext, authService *auth.AuthService) error {
@@ -110,5 +111,8 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 
 	c.Status(fiber.StatusOK)
 	middleware.LogRequests(c)
-	return c.JSON(SessionInitiationResponseDTO{Token: string(session.Token)})
+	return c.JSON(SessionInitiationResponseDTO{
+		Token:      string(session.Token),
+		InternalID: uint32(player.ID),
+	})
 }
