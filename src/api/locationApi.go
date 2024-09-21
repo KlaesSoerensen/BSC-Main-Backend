@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"log"
+	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,10 +14,10 @@ func applyLocationApi(app *fiber.App, appContext *meta.ApplicationContext) error
 	log.Println("[Location API] Applying location API")
 
 	// Route for fetching basic location info by locationID
-	app.Get("/api/v1/location/:locationID", getLocationInfoHandler(appContext))
+	app.Get("/api/v1/location/:locationID", auth.PrefixOn(appContext, getLocationInfoHandler))
 
 	// Route for fetching full location info by locationID
-	app.Get("/api/v1/location/:locationID/full", getLocationFullInfoHandler(appContext))
+	app.Get("/api/v1/location/:locationID/full", auth.PrefixOn(appContext, getLocationFullInfoHandler))
 
 	return nil
 }
@@ -188,156 +189,154 @@ func (MinigameDifficultyModel) TableName() string {
 	return "MiniGameDifficulty"
 }
 
-func getLocationInfoHandler(appContext *meta.ApplicationContext) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		locationID, err := c.ParamsInt("locationID")
-		if err != nil {
-			c.Response().Header.Set(appContext.DDH, "Invalid location ID "+err.Error())
-			return fiber.NewError(fiber.StatusBadRequest, "Invalid location ID")
-		}
+func getLocationInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
 
-		var location LocationModel
-		if err := appContext.ColonyAssetDB.
-			Preload("Appearances").
-			Where("id = ?", locationID).
-			First(&location).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.Response().Header.Set(appContext.DDH, "Location not found "+err.Error())
-				return fiber.NewError(fiber.StatusNotFound, "Location not found")
-			}
-			c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
-			return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
-		}
+	locationID, err := c.ParamsInt("locationID")
+	if err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid location ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid location ID")
+	}
 
-		appearances := make([]struct {
+	var location LocationModel
+	if err := appContext.ColonyAssetDB.
+		Preload("Appearances").
+		Where("id = ?", locationID).
+		First(&location).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Location not found "+err.Error())
+			return fiber.NewError(fiber.StatusNotFound, "Location not found")
+		}
+		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	appearances := make([]struct {
+		Level             uint32 `json:"level"`
+		AssetCollectionID uint32 `json:"assetCollectionID"`
+	}, len(location.Appearances))
+
+	for i, appearance := range location.Appearances {
+		appearances[i] = struct {
 			Level             uint32 `json:"level"`
 			AssetCollectionID uint32 `json:"assetCollectionID"`
-		}, len(location.Appearances))
-
-		for i, appearance := range location.Appearances {
-			appearances[i] = struct {
-				Level             uint32 `json:"level"`
-				AssetCollectionID uint32 `json:"assetCollectionID"`
-			}{
-				Level:             uint32(appearance.Level),
-				AssetCollectionID: appearance.AssetCollectionID,
-			}
-		}
-
-		response := struct {
-			ID          uint32 `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			Appearances []struct {
-				Level             uint32 `json:"level"`
-				AssetCollectionID uint32 `json:"assetCollectionID"`
-			} `json:"appearances"`
-			MinigameID uint32 `json:"minigameID"`
 		}{
-			ID:          location.ID,
-			Name:        location.Name,
-			Description: location.Description,
-			Appearances: appearances,
-			MinigameID:  location.MinigameID,
+			Level:             uint32(appearance.Level),
+			AssetCollectionID: appearance.AssetCollectionID,
 		}
-
-		return c.JSON(response)
 	}
+
+	response := struct {
+		ID          uint32 `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Appearances []struct {
+			Level             uint32 `json:"level"`
+			AssetCollectionID uint32 `json:"assetCollectionID"`
+		} `json:"appearances"`
+		MinigameID uint32 `json:"minigameID"`
+	}{
+		ID:          location.ID,
+		Name:        location.Name,
+		Description: location.Description,
+		Appearances: appearances,
+		MinigameID:  location.MinigameID,
+	}
+
+	return c.JSON(response)
 }
 
 // Handler for full location info
-func getLocationFullInfoHandler(appContext *meta.ApplicationContext) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		locationID, err := c.ParamsInt("locationID")
-		if err != nil {
-			c.Response().Header.Set(appContext.DDH, "Invalid location ID "+err.Error())
-			return fiber.NewError(fiber.StatusBadRequest, "Invalid location ID")
-		}
+func getLocationFullInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
 
-		var location LocationModel
-		if err := appContext.ColonyAssetDB.
-			Preload("Minigame.Icon").
-			Preload("Minigame.Difficulties.Icon").
-			Preload("Appearances.AssetCollection.CollectionEntries.GraphicalAsset.LODs").
-			Preload("Appearances.AssetCollection.CollectionEntries.Transform").
-			Where("id = ?", locationID).
-			First(&location).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.Response().Header.Set(appContext.DDH, "Location not found "+err.Error())
-				return fiber.NewError(fiber.StatusNotFound, "Location not found")
+	locationID, err := c.ParamsInt("locationID")
+	if err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid location ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid location ID")
+	}
+
+	var location LocationModel
+	if err := appContext.ColonyAssetDB.
+		Preload("Minigame.Icon").
+		Preload("Minigame.Difficulties.Icon").
+		Preload("Appearances.AssetCollection.CollectionEntries.GraphicalAsset.LODs").
+		Preload("Appearances.AssetCollection.CollectionEntries.Transform").
+		Where("id = ?", locationID).
+		First(&location).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Location not found "+err.Error())
+			return fiber.NewError(fiber.StatusNotFound, "Location not found")
+		}
+		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	appearances := make([]LocationAppearanceDTO, len(location.Appearances))
+	for i, appearance := range location.Appearances {
+		assets := make([]struct {
+			Transform TransformLocationDTO      `json:"transform"`
+			Asset     MinimizedAssetLocationDTO `json:"asset"`
+		}, len(appearance.AssetCollection.CollectionEntries))
+
+		for j, entry := range appearance.AssetCollection.CollectionEntries {
+			lods := make([]AssetLODDTO, len(entry.GraphicalAsset.LODs))
+			for k, lod := range entry.GraphicalAsset.LODs {
+				lods[k] = AssetLODDTO{
+					DetailLevel: uint32(lod.DetailLevel),
+					ID:          lod.ID,
+				}
 			}
-			c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
-			return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
-		}
 
-		appearances := make([]LocationAppearanceDTO, len(location.Appearances))
-		for i, appearance := range location.Appearances {
-			assets := make([]struct {
+			assets[j] = struct {
 				Transform TransformLocationDTO      `json:"transform"`
 				Asset     MinimizedAssetLocationDTO `json:"asset"`
-			}, len(appearance.AssetCollection.CollectionEntries))
-
-			for j, entry := range appearance.AssetCollection.CollectionEntries {
-				lods := make([]AssetLODDTO, len(entry.GraphicalAsset.LODs))
-				for k, lod := range entry.GraphicalAsset.LODs {
-					lods[k] = AssetLODDTO{
-						DetailLevel: uint32(lod.DetailLevel),
-						ID:          lod.ID,
-					}
-				}
-
-				assets[j] = struct {
-					Transform TransformLocationDTO      `json:"transform"`
-					Asset     MinimizedAssetLocationDTO `json:"asset"`
-				}{
-					Transform: TransformLocationDTO{
-						XScale:  entry.Transform.XScale,
-						YScale:  entry.Transform.YScale,
-						XOffset: entry.Transform.XOffset,
-						YOffset: entry.Transform.YOffset,
-						ZIndex:  uint32(entry.Transform.ZIndex),
-					},
-					Asset: MinimizedAssetLocationDTO{
-						ID:     entry.GraphicalAsset.ID,
-						Width:  entry.GraphicalAsset.Width,
-						Height: entry.GraphicalAsset.Height,
-						Alias:  entry.GraphicalAsset.Alias,
-						Type:   entry.GraphicalAsset.Type,
-						LODs:   lods,
-					},
-				}
-			}
-
-			appearances[i] = LocationAppearanceDTO{
-				Level:  uint32(appearance.Level),
-				Assets: assets,
+			}{
+				Transform: TransformLocationDTO{
+					XScale:  entry.Transform.XScale,
+					YScale:  entry.Transform.YScale,
+					XOffset: entry.Transform.XOffset,
+					YOffset: entry.Transform.YOffset,
+					ZIndex:  uint32(entry.Transform.ZIndex),
+				},
+				Asset: MinimizedAssetLocationDTO{
+					ID:     entry.GraphicalAsset.ID,
+					Width:  entry.GraphicalAsset.Width,
+					Height: entry.GraphicalAsset.Height,
+					Alias:  entry.GraphicalAsset.Alias,
+					Type:   entry.GraphicalAsset.Type,
+					LODs:   lods,
+				},
 			}
 		}
 
-		minigame := MinigameDTO{
-			ID:           location.Minigame.ID,
-			Name:         location.Minigame.Name,
-			Description:  location.Minigame.Description,
-			IconID:       location.Minigame.IconID,
-			Difficulties: []MinigameDifficultyLocationDTO{},
+		appearances[i] = LocationAppearanceDTO{
+			Level:  uint32(appearance.Level),
+			Assets: assets,
 		}
-
-		for _, difficulty := range location.Minigame.Difficulties {
-			minigame.Difficulties = append(minigame.Difficulties, MinigameDifficultyLocationDTO{
-				Name:        difficulty.Name,
-				Description: difficulty.Description,
-				IconID:      difficulty.IconID,
-			})
-		}
-
-		response := LocationFullInfoResponse{
-			ID:          location.ID,
-			Name:        location.Name,
-			Description: location.Description,
-			Appearances: appearances,
-			Minigame:    minigame,
-		}
-
-		return c.JSON(response)
 	}
+
+	minigame := MinigameDTO{
+		ID:           location.Minigame.ID,
+		Name:         location.Minigame.Name,
+		Description:  location.Minigame.Description,
+		IconID:       location.Minigame.IconID,
+		Difficulties: []MinigameDifficultyLocationDTO{},
+	}
+
+	for _, difficulty := range location.Minigame.Difficulties {
+		minigame.Difficulties = append(minigame.Difficulties, MinigameDifficultyLocationDTO{
+			Name:        difficulty.Name,
+			Description: difficulty.Description,
+			IconID:      difficulty.IconID,
+		})
+	}
+
+	response := LocationFullInfoResponse{
+		ID:          location.ID,
+		Name:        location.Name,
+		Description: location.Description,
+		Appearances: appearances,
+		Minigame:    minigame,
+	}
+
+	return c.JSON(response)
 }

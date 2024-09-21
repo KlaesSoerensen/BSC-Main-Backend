@@ -37,11 +37,12 @@ func applySessionApi(app *fiber.App, appContext *meta.ApplicationContext, authSe
 func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, authService *auth.AuthService) error {
 	var body vitec.SessionInitiationDTO
 	//Extract request body
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.BodyParser(&body); err != nil || body.IGN == "" || body.CurrentSessionToken == "" || body.UserIdentifier == "" {
 		c.Status(fiber.StatusBadRequest)
 		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
+
 	//First of all, check if the auth header is present. If so, lookup in the cache and return if found
 	existingAuthHeader := c.Request().Header.Peek(appContext.AuthTokenName)
 	if len(existingAuthHeader) > 0 {
