@@ -18,6 +18,13 @@ type SessionInitiationResponseDTO struct {
 	InternalID uint32 `json:"internalID"`
 }
 
+func newSessionInitiationResponseDTO(token string, internalID uint32) SessionInitiationResponseDTO {
+	return SessionInitiationResponseDTO{
+		Token:      token,
+		InternalID: internalID,
+	}
+}
+
 func applySessionApi(app *fiber.App, appContext *meta.ApplicationContext, authService *auth.AuthService) error {
 	log.Println("[Session API] Applying session API")
 
@@ -46,7 +53,7 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 			//Even if the cache is expired, the session is still valid
 			c.Status(fiber.StatusOK)
 			middleware.LogRequests(c)
-			return c.JSON(SessionInitiationResponseDTO{Token: string(cacheEntry.Entry.Token)})
+			return c.JSON(newSessionInitiationResponseDTO(string(cacheEntry.Entry.Token), cacheEntry.Entry.Player))
 		}
 	}
 
@@ -59,6 +66,7 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 			middleware.LogRequests(c)
 			return fiber.NewError(fiber.StatusInternalServerError, "Something went wrong when trying to lookup the user")
 		}
+		log.Println("[delete me] player lookup, player not found")
 		//If the player doesn't exist, check with Vitec
 		if crossVerificationError := appContext.VitecIntegration.VerifyUser(&body); crossVerificationError != nil {
 			c.Status(fiber.StatusUnauthorized)
@@ -89,7 +97,7 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 				go auth.UpdateLastPlayerCheckin(&session, appContext)
 				c.Status(fiber.StatusOK)
 				middleware.LogRequests(c)
-				return c.JSON(SessionInitiationResponseDTO{Token: string(session.Token)})
+				return c.JSON(newSessionInitiationResponseDTO(string(session.Token), session.Player))
 			}
 		} else {
 			//If the error is not the expected "record not found", something might have gone horribly wrong, so log it
@@ -108,11 +116,7 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusInternalServerError, "Unable to initialize session: "+sessionErr.Error())
 	}
-
 	c.Status(fiber.StatusOK)
 	middleware.LogRequests(c)
-	return c.JSON(SessionInitiationResponseDTO{
-		Token:      string(session.Token),
-		InternalID: uint32(player.ID),
-	})
+	return c.JSON(newSessionInitiationResponseDTO(string(session.Token), session.Player))
 }
