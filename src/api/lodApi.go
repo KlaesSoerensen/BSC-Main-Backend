@@ -1,11 +1,15 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"log"
+	"net/http"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -73,5 +77,15 @@ func getLODByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	c.Response().Header.Set(assetIDHeaderName, strconv.FormatUint(uint64(lod.GraphicalAsset), 10))
 	c.Response().Header.SetContentType(lod.MIMEType)
 	c.Response().Header.SetContentLength(len(lod.Blob))
+
+	hasher := sha256.New()
+	hasher.Write(lod.Blob)
+	//ETag is a value meant for version control of some resource
+	etag := hex.EncodeToString(hasher.Sum(nil))
+	c.Response().Header.Set("ETag", etag)
+
+	oneYear := 365 * 24 * time.Hour
+	c.Response().Header.Set("Cache-Control", "public, max-age=31536000, immutable")
+	c.Response().Header.Set("Expires", time.Now().Add(oneYear).UTC().Format(http.TimeFormat))
 	return c.Send(lod.Blob)
 }
