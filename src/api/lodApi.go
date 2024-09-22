@@ -73,6 +73,11 @@ func getLODByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 	c.Status(fiber.StatusOK)
+	SetHeadersForLODBlob(c, &lod)
+	return c.Send(lod.Blob)
+}
+
+func SetHeadersForLODBlob(c *fiber.Ctx, lod *LOD) {
 	c.Response().Header.Set(detailLevelHeaderName, strconv.FormatUint(uint64(lod.DetailLevel), 10))
 	c.Response().Header.Set(assetIDHeaderName, strconv.FormatUint(uint64(lod.GraphicalAsset), 10))
 	c.Response().Header.SetContentType(lod.MIMEType)
@@ -88,5 +93,4 @@ func getLODByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	oneYear := 365 * 24 * time.Hour
 	c.Response().Header.Set("Cache-Control", "public, max-age=31536000, immutable")
 	c.Response().Header.Set("Expires", time.Now().Add(oneYear).UTC().Format(http.TimeFormat))
-	return c.Send(lod.Blob)
 }

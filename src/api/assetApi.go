@@ -35,11 +35,45 @@ type MultiAssetResponse []AssetResponse
 func applyAssetApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Asset API] Applying asset API")
 
+	app.Get("/api/v1/asset/:assetID/lod/:lodID", auth.PrefixOn(appContext, getLODByAssetAndDetailLevel))
+
 	app.Get("/api/v1/asset/:assetId", auth.PrefixOn(appContext, getAssetByIdHandler))
 
 	app.Get("/api/v1/assets", auth.PrefixOn(appContext, getMultipleAssetsByIds))
 
 	return nil
+}
+
+func getLODByAssetAndDetailLevel(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	assetIdStr := c.Params("assetID")
+	lodIdStr := c.Params("lodID")
+
+	assetId, assetIdErr := strconv.Atoi(assetIdStr)
+	lodId, lodIdErr := strconv.Atoi(lodIdStr)
+
+	if assetIdErr != nil || lodIdErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Error parsing asset or LOD id")
+		return fiber.NewError(fiber.StatusBadRequest, "Error parsing asset or LOD id")
+	}
+
+	var lod LOD
+	err := appContext.ColonyAssetDB.
+		Where(`"LOD"."graphicalAsset" = ? AND "LOD"."detailLevel" = ?`, assetId, lodId).
+		First(&lod).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "No such LOD")
+			return fiber.NewError(fiber.StatusNotFound, "No such LOD")
+		}
+		// Gorm exposes secrets in err when DB is down, so it can't be included in the response
+		c.Response().Header.Set(appContext.DDH, "Internal error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
+	}
+
+	c.Status(fiber.StatusOK)
+	SetHeadersForLODBlob(c, &lod)
+	return c.Send(lod.Blob)
 }
 
 func getMultipleAssetsByIds(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
