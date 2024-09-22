@@ -81,6 +81,7 @@ func getLODByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	hasher := sha256.New()
 	hasher.Write(lod.Blob)
 	//ETag is a value meant for version control of some resource
+	// see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag
 	etag := hex.EncodeToString(hasher.Sum(nil))
 	c.Response().Header.Set("ETag", etag)
 
