@@ -37,7 +37,7 @@ func applySessionApi(app *fiber.App, appContext *meta.ApplicationContext, authSe
 func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, authService *auth.AuthService) error {
 	var body vitec.SessionInitiationDTO
 	//Extract request body
-	if err := c.BodyParser(&body); err != nil || body.IGN == "" || body.CurrentSessionToken == "" || body.UserIdentifier == "" {
+	if err := c.BodyParser(&body); err != nil || body.FirstName == "" || body.LastName == "" || body.CurrentSessionToken == "" || body.UserIdentifier == "" {
 		c.Status(fiber.StatusBadRequest)
 		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
@@ -58,7 +58,7 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 		}
 	}
 
-	var player PlayerDTO
+	var player PlayerModel
 	var idOfPreviousSession int = -1
 	//Check if player exists in PlayerDB - if so, all is well
 	if err := appContext.PlayerDB.Where(`"referenceID" = ?`, body.UserIdentifier).First(&player).Error; err != nil {
@@ -75,9 +75,10 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 			return fiber.NewError(fiber.StatusUnauthorized, "Unable to cross-verify")
 		}
 		//If the user is cross verified but doesn't exist in our system, a new player is created
-		player = PlayerDTO{
+		player = PlayerModel{
 			ReferenceID:  body.UserIdentifier,
-			IGN:          body.IGN,
+			FirstName:    body.FirstName,
+			LastName:     body.LastName,
 			Sprite:       1,
 			Achievements: util.PGIntArray{},
 		}

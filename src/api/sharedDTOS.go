@@ -35,13 +35,27 @@ type MinimizedAssetDTO struct {
 // PlayerDTO represents the data returned for a player's basic information.
 type PlayerDTO struct {
 	ID                   uint32          `json:"id"`
-	ReferenceID          string          `json:"referenceID" gorm:"column:referenceID"`
-	IGN                  string          `json:"IGN" gorm:"column:IGN"`
+	FirstName            string          `json:"firstName" gorm:"column:firstName"`
+	LastName             string          `json:"lastName" gorm:"column:lastName"`
 	Sprite               uint32          `json:"sprite"`
 	Achievements         util.PGIntArray `json:"achievements"`
 	HasCompletedTutorial bool            `json:"hasCompletedTutorial" gorm:"-"`
 }
 
 func (p PlayerDTO) TableName() string {
+	return "Player"
+}
+
+// PlayerModel represents the database model for a player.
+type PlayerModel struct {
+	ID           uint32          `json:"id"`
+	ReferenceID  string          `json:"referenceID" gorm:"column:referenceID"`
+	FirstName    string          `json:"firstName" gorm:"column:firstName"`
+	LastName     string          `json:"lastName" gorm:"column:lastName"`
+	Sprite       uint32          `json:"sprite"`
+	Achievements util.PGIntArray `json:"achievements"`
+}
+
+func (p PlayerModel) TableName() string {
 	return "Player"
 }

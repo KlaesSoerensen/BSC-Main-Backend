@@ -9,7 +9,8 @@ import (
 type SessionInitiationDTO struct {
 	UserIdentifier      string `json:"userIdentifier"`
 	CurrentSessionToken string `json:"currentSessionToken"`
-	IGN                 string `json:"IGN"`
+	FirstName           string `json:"firstName"`
+	LastName            string `json:"lastName"`
 }
 
 type CrossVerificationType string
