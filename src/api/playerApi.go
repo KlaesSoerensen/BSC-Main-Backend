@@ -116,18 +116,17 @@ func getPlayerPreferencesHandler(c *fiber.Ctx, appContext *meta.ApplicationConte
 }
 
 func getPlayerInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-	playerIdStr := c.Params("playerId")
-	playerId, parseErr := strconv.Atoi(playerIdStr)
+	playerId, parseErr := c.ParamsInt("playerId")
 	if parseErr != nil {
-		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+parseErr.Error())
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID "+parseErr.Error())
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID: "+strconv.Itoa(playerId))
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID: "+strconv.Itoa(playerId))
 	}
 
 	// Fetch player information from the database
 	var player PlayerDTO
 	if err := appContext.PlayerDB.
 		Table("Player").
-		Select(`id, "IGN", sprite, achievements`).
+		Select(`id, "firstName", "lastName", sprite, achievements`).
 		Where("id = ?", playerId).
 		First(&player).Error; err != nil {
 
