@@ -13,9 +13,10 @@ import (
 
 type InternationalizationCatalogue = map[string]string
 type AvailableLanguageModel struct {
-	ID   uint32 `json:"id" gorm:"column:id;primaryKey"`
-	Code string `json:"code" gorm:"column:code"`
-	Icon uint32 `json:"icon" gorm:"column:icon"`
+	ID         uint32 `json:"id" gorm:"column:id;primaryKey"`
+	CommonName string `json:"commonName" gorm:"column:commonName"`
+	Code       string `json:"code" gorm:"column:code"`
+	Icon       uint32 `json:"icon" gorm:"column:icon"`
 }
 
 func (a *AvailableLanguageModel) TableName() string {
@@ -23,8 +24,9 @@ func (a *AvailableLanguageModel) TableName() string {
 }
 
 type AvailableLanguageDTO struct {
-	Code string `json:"code" gorm:"column:code"`
-	Icon uint32 `json:"icon" gorm:"column:icon"`
+	CommonName string `json:"commonName" gorm:"column:commonName"`
+	Code       string `json:"code" gorm:"column:code"`
+	Icon       uint32 `json:"icon" gorm:"column:icon"`
 }
 
 type AvailableLanguagesResponseDTO struct {
