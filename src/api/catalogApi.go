@@ -12,18 +12,55 @@ import (
 )
 
 type InternationalizationCatalogue = map[string]string
+type AvailableLanguageModel struct {
+	ID   uint32 `json:"id" gorm:"column:id;primaryKey"`
+	Code string `json:"code" gorm:"column:code"`
+	Icon uint32 `json:"icon" gorm:"column:icon"`
+}
+
+func (a *AvailableLanguageModel) TableName() string {
+	return "AvailableLanguages"
+}
+
+type AvailableLanguageDTO struct {
+	Code string `json:"code" gorm:"column:code"`
+	Icon uint32 `json:"icon" gorm:"column:icon"`
+}
+
+type AvailableLanguagesResponseDTO struct {
+	Languages []AvailableLanguageDTO `json:"languages"`
+}
+
+func (a *AvailableLanguageDTO) TableName() string {
+	return "AvailableLanguages"
+}
+
+type CatalogueEntry struct {
+	Key   string
+	Value string
+}
 
 func applyCatalog(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Catalog API] Applying catalog API")
+
+	app.Get("/api/v1/catalog/languages", auth.PrefixOn(appContext, getAvailableLanguagesHandler))
 
 	app.Get("/api/v1/catalog/:language", auth.PrefixOn(appContext, getCatalogueForLanguageHandler))
 
 	return nil
 }
 
-type CatalogueEntry struct {
-	Key   string
-	Value string
+func getAvailableLanguagesHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	var data []AvailableLanguageDTO
+	if dbErr := appContext.LanguageDB.Find(&data).Error; dbErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Internal error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
+	}
+
+	c.Status(fiber.StatusOK)
+	return c.JSON(&AvailableLanguagesResponseDTO{
+		Languages: data,
+	})
 }
 
 func getCatalogueForLanguageHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
