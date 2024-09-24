@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
@@ -10,21 +11,21 @@ import (
 )
 
 type MinimizedAssetWithTransformDTO struct {
-	Width     uint32       `json:"width"`
-	Height    uint32       `json:"height"`
-	LODs      []LODDetails `json:"LODs" gorm:"column:LODs"`
-	Alias     string       `json:"alias"`
-	Type      string       `json:"type"`
-	Transform TransformDTO `json:"transform"`
+	Width     uint32          `json:"width"`
+	Height    uint32          `json:"height"`
+	Alias     string          `json:"alias"`
+	Type      string          `json:"type"`
+	Transform TransformDTO    `json:"transform"`
+	LODs      []LODDetailsDTO `json:"LODs" gorm:"column:LODs"`
 }
 
-type AssetCollectionResponse struct {
+type AssetCollectionResponseDTO struct {
 	ID      uint32                           `json:"id"`
 	Name    string                           `json:"name"`
 	Entries []MinimizedAssetWithTransformDTO `json:"entries"`
 }
 
-func (a *AssetCollectionResponse) TableName() string {
+func (a *AssetCollectionResponseDTO) TableName() string {
 	return "AssetCollection"
 }
 
@@ -105,12 +106,22 @@ func getCollectionByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Collection not found"})
 	}
 
-	response := transformRawResults(rawResults)
-	return c.Status(fiber.StatusOK).JSON(response)
+	transformed, tranformationErr := transformRawResults(rawResults)
+	if tranformationErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Error transforming raw results: "+tranformationErr.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Error transforming raw results")
+	}
+
+	c.Status(fiber.StatusOK)
+	return c.JSON(transformed)
 }
 
-func transformRawResults(rawResults []RawResult) *AssetCollectionResponse {
-	response := &AssetCollectionResponse{
+func transformRawResults(rawResults []RawResult) (*AssetCollectionResponseDTO, error) {
+	if len(rawResults) == 0 {
+		return nil, fmt.Errorf("no results to transform")
+	}
+
+	response := &AssetCollectionResponseDTO{
 		ID:      rawResults[0].AssetCollectionID,
 		Name:    rawResults[0].CollectionName,
 		Entries: []MinimizedAssetWithTransformDTO{},
@@ -121,12 +132,12 @@ func transformRawResults(rawResults []RawResult) *AssetCollectionResponse {
 	for _, raw := range rawResults {
 		entry, exists := entriesMap[raw.CollectionEntryID]
 		if !exists {
-			entry = &MinimizedAssetWithTransformDTO{
+			newEntry := &MinimizedAssetWithTransformDTO{
 				Width:  uint32(raw.Width),
 				Height: uint32(raw.Height),
 				Alias:  raw.Alias,
 				Type:   raw.Type,
-				LODs:   []LODDetails{},
+				LODs:   []LODDetailsDTO{},
 				Transform: TransformDTO{
 					XOffset: raw.XOffset,
 					YOffset: raw.YOffset,
@@ -135,16 +146,39 @@ func transformRawResults(rawResults []RawResult) *AssetCollectionResponse {
 					YScale:  raw.YScale,
 				},
 			}
-			entriesMap[raw.CollectionEntryID] = entry
-			response.Entries = append(response.Entries, *entry)
+			entriesMap[raw.CollectionEntryID] = newEntry
 		}
 
-		entry.LODs = append(entry.LODs, LODDetails{
-			ID:          raw.LODID,
-			DetailLevel: uint32(raw.DetailLevel),
-		})
+		entry = entriesMap[raw.CollectionEntryID]
+		if entry == nil {
+			continue
+		}
 
+		// Add LOD if it's not already present and LODID is not 0
+		if raw.LODID != 0 {
+			lodExists := false
+			for _, lod := range entry.LODs {
+				if lod.ID == raw.LODID {
+					lodExists = true
+					break
+				}
+			}
+			if !lodExists {
+				entry.LODs = append(entry.LODs, LODDetailsDTO{
+					ID:          raw.LODID,
+					DetailLevel: uint32(raw.DetailLevel),
+				})
+			}
+		}
 	}
 
-	return response
+	// Convert map to slice for the response
+	for _, entry := range entriesMap {
+		if entry == nil {
+			continue
+		}
+		response.Entries = append(response.Entries, *entry)
+	}
+
+	return response, nil
 }

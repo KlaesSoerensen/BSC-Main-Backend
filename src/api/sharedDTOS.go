@@ -12,6 +12,15 @@ func (l LODDetails) TableName() string {
 	return "LOD"
 }
 
+type LODDetailsDTO struct {
+	ID          uint32 `json:"id"`
+	DetailLevel uint32 `json:"detailLevel" gorm:"column:detailLevel"`
+}
+
+func (l LODDetailsDTO) TableName() string {
+	return "LOD"
+}
+
 type TransformModel struct {
 	ID      uint32  `gorm:"column:id;primaryKey"`
 	XScale  float32 `gorm:"column:xScale"`
