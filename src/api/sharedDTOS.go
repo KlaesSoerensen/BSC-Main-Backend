@@ -12,8 +12,20 @@ func (l LODDetails) TableName() string {
 	return "LOD"
 }
 
+type TransformModel struct {
+	ID      uint32  `gorm:"column:id;primaryKey"`
+	XScale  float32 `gorm:"column:xScale"`
+	YScale  float32 `gorm:"column:yScale"`
+	XOffset float32 `gorm:"column:xOffset"`
+	YOffset float32 `gorm:"column:yOffset"`
+	ZIndex  int     `gorm:"column:zIndex"`
+}
+
+func (tm *TransformModel) TableName() string {
+	return "Transform"
+}
+
 type TransformDTO struct {
-	ID      uint32  `json:"id"`
 	XOffset float32 `json:"xOffset" gorm:"column:xOffset"`
 	YOffset float32 `json:"yOffset" gorm:"column:yOffset"`
 	ZIndex  uint32  `json:"zIndex" gorm:"column:zIndex"`

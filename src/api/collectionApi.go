@@ -6,13 +6,15 @@ import (
 	"otte_main_backend/src/meta"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 type MinimizedAssetWithTransformDTO struct {
-	HasLODs   bool         `json:"hasLODs"`
 	Width     uint32       `json:"width"`
 	Height    uint32       `json:"height"`
-	LODs      []LODDetails `json:"LODs"`
+	LODs      []LODDetails `json:"LODs" gorm:"column:LODs"`
+	Alias     string       `json:"alias"`
+	Type      string       `json:"type"`
 	Transform TransformDTO `json:"transform"`
 }
 
@@ -22,21 +24,26 @@ type AssetCollectionResponse struct {
 	Entries []MinimizedAssetWithTransformDTO `json:"entries"`
 }
 
+func (a *AssetCollectionResponse) TableName() string {
+	return "AssetCollection"
+}
+
 type RawResult struct {
-	AssetCollectionID uint32  `json:"assetCollectionId"`
-	CollectionName    string  `json:"collectionName"`
-	CollectionEntryID uint32  `json:"collectionEntryId"`
-	GraphicalAssetID  uint32  `json:"graphicalAssetId"`
-	HasLODs           bool    `json:"hasLODs"`
-	Width             int     `json:"width"`
-	Height            int     `json:"height"`
-	XOffset           float32 `json:"xOffset"`
-	YOffset           float32 `json:"yOffset"`
-	ZIndex            uint32  `json:"zIndex"`
-	XScale            float32 `json:"xScale"`
-	YScale            float32 `json:"yScale"`
-	LODID             *uint32 `json:"lodId"`       // Nullable because it can be null
-	DetailLevel       *int    `json:"detailLevel"` // Nullable because it can be null
+	AssetCollectionID uint32  `gorm:"column:assetCollectionId"`
+	CollectionName    string  `gorm:"column:collectionName"`
+	CollectionEntryID uint32  `gorm:"column:collectionEntryId"`
+	GraphicalAssetID  uint32  `gorm:"column:graphicalAssetId"`
+	Width             int     `gorm:"column:width"`
+	Height            int     `gorm:"column:height"`
+	Alias             string  `gorm:"column:alias"`
+	Type              string  `gorm:"column:type"`
+	XOffset           float32 `gorm:"column:xOffset"`
+	YOffset           float32 `gorm:"column:yOffset"`
+	ZIndex            uint32  `gorm:"column:zIndex"`
+	XScale            float32 `gorm:"column:xScale"`
+	YScale            float32 `gorm:"column:yScale"`
+	LODID             uint32  `gorm:"column:lodId"`
+	DetailLevel       int     `gorm:"column:detailLevel"`
 }
 
 const collectionQuery = `
@@ -45,26 +52,27 @@ SELECT
 	ac.name AS "collectionName",
 	ce.id AS "collectionEntryId",
 	ga.id AS "graphicalAssetId",
-	ga.hasLOD AS "hasLODs",
 	ga.width AS "width",
 	ga.height AS "height",
-	t.xOffset AS "xOffset",
-	t.yOffset AS "yOffset",
-	t.zIndex AS "zIndex",
-	t.xScale AS "xScale",
-	t.yScale AS "yScale",
+	ga.alias AS "alias",
+	ga.type AS "type",
+	t."xOffset" AS "xOffset",
+	t."yOffset" AS "yOffset",
+	t."zIndex" AS "zIndex",
+	t."xScale" AS "xScale",
+	t."yScale" AS "yScale",
 	lod.id AS "lodId",
-	lod.detailLevel AS "detailLevel"
+	lod."detailLevel" AS "detailLevel"
 FROM 
 	"AssetCollection" ac
 JOIN 
-	"CollectionEntry" ce ON ce.assetCollection = ac.id
+	"CollectionEntry" ce ON ce."assetCollection" = ac.id
 JOIN 
 	"Transform" t ON t.id = ce.transform
 JOIN 
-	"GraphicalAsset" ga ON ga.id = ce.graphicalAsset
+	"GraphicalAsset" ga ON ga.id = ce."graphicalAsset"
 LEFT JOIN 
-	"LOD" lod ON lod.graphicalAsset = ga.id
+	"LOD" lod ON lod."graphicalAsset" = ga.id
 WHERE 
 	ac.id = ?`
 
@@ -77,20 +85,31 @@ func applyCollectionApi(app *fiber.App, appContext *meta.ApplicationContext) err
 }
 
 func getCollectionByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-	collectionId := c.Params("collectionId")
-	if collectionId == "" {
-		c.Status(fiber.StatusBadRequest)
-		return c.JSON(fiber.Map{"error": "Collection ID not provided"})
+	collectionId, parseErr := c.ParamsInt("collectionId")
+	if parseErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid collection ID: "+parseErr.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid collection ID: "+parseErr.Error())
 	}
 
 	var rawResults []RawResult
 	if err := appContext.ColonyAssetDB.Raw(collectionQuery, collectionId).Scan(&rawResults).Error; err != nil {
-		c.Status(fiber.StatusInternalServerError)
-		c.Response().Header.Set(appContext.DDH, err.Error())
-		return c.Next()
+		if err == gorm.ErrRecordNotFound {
+			c.Response().Header.Set(appContext.DDH, "No such collection")
+			return fiber.NewError(fiber.StatusNotFound, "No such collection")
+		}
+		log.Printf("[Collection API] Error retrieving collection: %v", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "Error retrieving collection")
 	}
 
-	// Transform the raw results into the structured response
+	if len(rawResults) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Collection not found"})
+	}
+
+	response := transformRawResults(rawResults)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func transformRawResults(rawResults []RawResult) *AssetCollectionResponse {
 	response := &AssetCollectionResponse{
 		ID:      rawResults[0].AssetCollectionID,
 		Name:    rawResults[0].CollectionName,
@@ -100,13 +119,14 @@ func getCollectionByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	entriesMap := make(map[uint32]*MinimizedAssetWithTransformDTO)
 
 	for _, raw := range rawResults {
-		// Check if we've already added this CollectionEntry
-		if _, exists := entriesMap[raw.CollectionEntryID]; !exists {
-			entriesMap[raw.CollectionEntryID] = &MinimizedAssetWithTransformDTO{
-				HasLODs: raw.HasLODs,
-				Width:   uint32(raw.Width),
-				Height:  uint32(raw.Height),
-				LODs:    []LODDetails{},
+		entry, exists := entriesMap[raw.CollectionEntryID]
+		if !exists {
+			entry = &MinimizedAssetWithTransformDTO{
+				Width:  uint32(raw.Width),
+				Height: uint32(raw.Height),
+				Alias:  raw.Alias,
+				Type:   raw.Type,
+				LODs:   []LODDetails{},
 				Transform: TransformDTO{
 					XOffset: raw.XOffset,
 					YOffset: raw.YOffset,
@@ -115,20 +135,16 @@ func getCollectionByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 					YScale:  raw.YScale,
 				},
 			}
-			// Add to the response entries
-			response.Entries = append(response.Entries, *entriesMap[raw.CollectionEntryID])
+			entriesMap[raw.CollectionEntryID] = entry
+			response.Entries = append(response.Entries, *entry)
 		}
 
-		// Add LOD details if present
-		if raw.LODID != nil {
-			lod := LODDetails{
-				ID:          *raw.LODID,
-				DetailLevel: uint32(*raw.DetailLevel),
-			}
-			entriesMap[raw.CollectionEntryID].LODs = append(entriesMap[raw.CollectionEntryID].LODs, lod)
-		}
+		entry.LODs = append(entry.LODs, LODDetails{
+			ID:          raw.LODID,
+			DetailLevel: uint32(raw.DetailLevel),
+		})
+
 	}
 
-	c.Status(fiber.StatusOK)
-	return c.JSON(response)
+	return response
 }
