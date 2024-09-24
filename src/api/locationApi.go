@@ -85,7 +85,7 @@ type LocationModel struct {
 	Appearances []LocationAppearanceModel `gorm:"foreignKey:LocationID"`
 }
 
-func (LocationModel) TableName() string {
+func (lm *LocationModel) TableName() string {
 	return "Location"
 }
 
@@ -97,7 +97,7 @@ type LocationAppearanceModel struct {
 	AssetCollection   AssetCollectionModel `gorm:"foreignKey:AssetCollectionID"`
 }
 
-func (LocationAppearanceModel) TableName() string {
+func (lam *LocationAppearanceModel) TableName() string {
 	return "LocationAppearance"
 }
 
@@ -108,7 +108,7 @@ type AssetCollectionModel struct {
 	CollectionEntries []CollectionEntryModel `gorm:"foreignKey:AssetCollectionID"`
 }
 
-func (AssetCollectionModel) TableName() string {
+func (acm *AssetCollectionModel) TableName() string {
 	return "AssetCollection"
 }
 
@@ -121,7 +121,7 @@ type CollectionEntryModel struct {
 	AssetCollectionID uint32              `gorm:"column:assetCollection"`
 }
 
-func (CollectionEntryModel) TableName() string {
+func (cem *CollectionEntryModel) TableName() string {
 	return "CollectionEntry"
 }
 
@@ -135,7 +135,7 @@ type GraphicalAssetModel struct {
 	LODs    []LODModel `gorm:"foreignKey:GraphicalAssetID"`
 }
 
-func (GraphicalAssetModel) TableName() string {
+func (ga *GraphicalAssetModel) TableName() string {
 	return "GraphicalAsset"
 }
 
@@ -146,21 +146,8 @@ type LODModel struct {
 	GraphicalAssetID uint32 `gorm:"column:graphicalAsset"`
 }
 
-func (LODModel) TableName() string {
+func (lm *LODModel) TableName() string {
 	return "LOD"
-}
-
-type TransformModel struct {
-	ID      uint32  `gorm:"column:id;primaryKey"`
-	XScale  float32 `gorm:"column:xScale"`
-	YScale  float32 `gorm:"column:yScale"`
-	XOffset float32 `gorm:"column:xOffset"`
-	YOffset float32 `gorm:"column:yOffset"`
-	ZIndex  int     `gorm:"column:zIndex"`
-}
-
-func (TransformModel) TableName() string {
-	return "Transform"
 }
 
 type MinigameModel struct {
@@ -172,7 +159,7 @@ type MinigameModel struct {
 	Difficulties []MinigameDifficultyModel `gorm:"foreignKey:MinigameID"`
 }
 
-func (MinigameModel) TableName() string {
+func (mm *MinigameModel) TableName() string {
 	return "MiniGame"
 }
 
@@ -185,7 +172,7 @@ type MinigameDifficultyModel struct {
 	MinigameID  uint32              `gorm:"column:minigame"`
 }
 
-func (MinigameDifficultyModel) TableName() string {
+func (mdm *MinigameDifficultyModel) TableName() string {
 	return "MiniGameDifficulty"
 }
 

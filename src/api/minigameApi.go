@@ -106,7 +106,6 @@ func getMinigameInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 
 	var minigame MinigameInfoDTO
 	if err := appContext.ColonyAssetDB.
-		Table("MiniGame").
 		Preload("Difficulties").
 		Where(`"MiniGame".id = ?`, id).
 		First(&minigame).Error; err != nil {
