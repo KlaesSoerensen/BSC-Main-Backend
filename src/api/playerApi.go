@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"otte_main_backend/src/auth"
+	"otte_main_backend/src/database"
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/util"
 	"strconv"
@@ -62,8 +63,7 @@ type ColonyOverviewResponse struct {
 func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Player API] Applying Player API")
 
-	// Route for fetching a single player's info by their ID
-	app.Get("/api/v1/player/:playerId", auth.PrefixOn(appContext, getPlayerInfoHandler))
+	app.Post("/api/v1/player/:playerId/achievement/:achievementId", auth.PrefixOn(appContext, grantPlayerAchievementHandler))
 
 	// Route for fetching a player's preferences by their ID
 	app.Get("/api/v1/player/:playerId/preferences", auth.PrefixOn(appContext, getPlayerPreferencesHandler))
@@ -77,7 +77,68 @@ func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	// Route for creating a new colony
 	app.Post("/api/v1/player/:playerId/colony/create", auth.PrefixOn(appContext, createColonyHandler))
 
+	// Route for fetching a single player's info by their ID
+	app.Get("/api/v1/player/:playerId", auth.PrefixOn(appContext, getPlayerInfoHandler))
 	return nil
+}
+
+func grantPlayerAchievementHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	playerId, parseErr := c.ParamsInt("playerId")
+	if parseErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+parseErr.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID "+parseErr.Error())
+	}
+	achievementId, parseErr := c.ParamsInt("achievementId")
+	if parseErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid achievement ID "+parseErr.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid achievement ID "+parseErr.Error())
+	}
+	var achievement AchievementModel
+	if achievementExistErr := appContext.PlayerDB.Where("id = ?", achievementId).First(&achievement).Error; achievementExistErr != nil {
+		if !errors.Is(achievementExistErr, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Internal error")
+			return fiber.NewError(fiber.StatusNotFound, "Internal error")
+		}
+
+		c.Response().Header.Set(appContext.DDH, "Achievement does not exist "+achievementExistErr.Error())
+		return fiber.NewError(fiber.StatusNotFound, "Achievement does not exist "+achievementExistErr.Error())
+	}
+
+	//Separate check needed as the insert statement doesn't actually error
+	//if the player doesn't exist
+	if playerExistErr := appContext.PlayerDB.Table("Player").Where("id = ?", playerId).First(&PlayerDTO{}).Error; playerExistErr != nil {
+		if !errors.Is(playerExistErr, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Internal error")
+			return fiber.NewError(fiber.StatusNotFound, "Internal error")
+		}
+
+		c.Response().Header.Set(appContext.DDH, "Player does not exist "+playerExistErr.Error())
+		return fiber.NewError(fiber.StatusNotFound, "Player does not exist "+playerExistErr.Error())
+	}
+
+	if insertErr := GrantPlayerAchievement(appContext.PlayerDB, uint32(playerId), uint32(achievementId)); insertErr != nil {
+		if !errors.Is(insertErr, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Internal error")
+			return fiber.NewError(fiber.StatusNotFound, "Internal error")
+		}
+
+		c.Response().Header.Set(appContext.DDH, "No such player")
+		return fiber.NewError(fiber.StatusInternalServerError, "No such player")
+	}
+
+	c.Status(fiber.StatusOK)
+	return nil
+}
+
+func GrantPlayerAchievement(db database.PlayerDB, playerId uint32, achievementID uint32) error {
+	log.Println("[delete me], player id: ", playerId, " achievement id: ", achievementID)
+	result := db.Exec(`
+        UPDATE "Player"
+        SET achievements = ARRAY(SELECT DISTINCT UNNEST(array_append(achievements, ?)))
+        WHERE "id" = ?
+    `, achievementID, playerId)
+
+	return result.Error
 }
 
 func getPlayerPreferencesHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {

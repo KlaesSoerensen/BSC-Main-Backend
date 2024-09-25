@@ -1,6 +1,19 @@
 package api
 
-import "otte_main_backend/src/util"
+import (
+	"otte_main_backend/src/util"
+)
+
+type AchievementModel struct {
+	ID          uint32 `json:"id" gorm:"column:id;primaryKey"`
+	Description string `json:"description" gorm:"column:description"`
+	Icon        uint32 `json:"icon" gorm:"column:icon"`
+	Title       string `json:"title" gorm:"column:title"`
+}
+
+func (a *AchievementModel) TableName() string {
+	return "Achievement"
+}
 
 type LODDetails struct {
 	ID             uint32 `json:"id"`
