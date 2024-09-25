@@ -323,6 +323,7 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 
 	type LocationTransformTuple struct {
 		Transform  TransformDTO `json:"transform"`
+		ID         uint32       `json:"id"`
 		LocationID uint32       `json:"locationID" gorm:"foreignKey:Location;references:ID;"`
 		Level      uint32       `json:"level"`
 	}
@@ -356,6 +357,7 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 		}
 
 		colonyLocations = append(colonyLocations, LocationTransformTuple{
+			ID:         colonyLocation.ID,
 			Transform:  transform,
 			LocationID: colonyLocation.Location,
 			Level:      colonyLocation.Level,
