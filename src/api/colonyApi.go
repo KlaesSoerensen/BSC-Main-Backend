@@ -15,6 +15,8 @@ import (
 func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Colony API] Applying colony API")
 
+	app.Get("/api/v1/colony/:colonyId/pathgraph", auth.PrefixOn(appContext, getPathGraphHandler))
+
 	// Route for opening a colony
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
 
@@ -22,6 +24,39 @@ func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	app.Post("/api/v1/colony/join/:code", auth.PrefixOn(appContext, joinColonyHandler))
 
 	return nil
+}
+
+type PathDTO struct {
+	From uint32 `json:"from" gorm:"column:locationA"` //Id of ColonyLocation
+	To   uint32 `json:"to" gorm:"column:locationB"`   //Id of ColonyLocation
+}
+
+func (p *PathDTO) TableName() string {
+	return "ColonyLocationPath"
+}
+
+type PathGraphDTO struct {
+	Paths []PathDTO `json:"paths"`
+}
+
+func getPathGraphHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	colonyID, err := c.ParamsInt("colonyId")
+	if err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid colony ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
+	}
+	var paths []PathDTO
+	if dbErr := appContext.ColonyAssetDB.Where("colony = ?", colonyID).Find(&paths).Error; dbErr != nil || len(paths) == 0 {
+		if !errors.Is(dbErr, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Internal error")
+			return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
+		}
+
+		c.Response().Header.Set(appContext.DDH, "Colony not found or paths not found")
+		return fiber.NewError(fiber.StatusNotFound, "Colony not found or paths not found")
+	}
+	c.Status(fiber.StatusOK)
+	return c.JSON(PathGraphDTO{Paths: paths})
 }
 
 // OpenColonyRequest represents the request body for opening a colony
