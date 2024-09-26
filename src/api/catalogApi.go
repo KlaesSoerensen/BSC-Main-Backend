@@ -14,6 +14,7 @@ import (
 type InternationalizationCatalogue = map[string]string
 type AvailableLanguageModel struct {
 	ID         uint32 `json:"id" gorm:"column:id;primaryKey"`
+	Coverage   uint32 `json:"coverage" gorm:"column:coverage"`
 	CommonName string `json:"commonName" gorm:"column:commonName"`
 	Code       string `json:"code" gorm:"column:code"`
 	Icon       uint32 `json:"icon" gorm:"column:icon"`
@@ -24,17 +25,18 @@ func (a *AvailableLanguageModel) TableName() string {
 }
 
 type AvailableLanguageDTO struct {
+	Coverage   uint32 `json:"coverage" gorm:"column:coverage"`
 	CommonName string `json:"commonName" gorm:"column:commonName"`
 	Code       string `json:"code" gorm:"column:code"`
 	Icon       uint32 `json:"icon" gorm:"column:icon"`
 }
 
-type AvailableLanguagesResponseDTO struct {
-	Languages []AvailableLanguageDTO `json:"languages"`
-}
-
 func (a *AvailableLanguageDTO) TableName() string {
 	return "AvailableLanguages"
+}
+
+type AvailableLanguagesResponseDTO struct {
+	Languages []AvailableLanguageDTO `json:"languages"`
 }
 
 type CatalogueEntry struct {
