@@ -14,17 +14,30 @@ import (
 	"gorm.io/gorm"
 )
 
-// PlayerPreference represents a single preference item.
-type PlayerPreference struct {
-	ID              uint32             `json:"id"`
-	PreferenceKey   string             `json:"key" gorm:"column:preferenceKey;foreignKey:preferenceKey;references:preferenceKey"`
-	ChosenValue     string             `json:"chosenValue" gorm:"column:chosenValue"`
-	AvailableValues util.PGStringArray `json:"availableValues" gorm:"column:availableValues"`
+// PlayerPreferenceModel represents a single preference item.
+type PlayerPreferenceModel struct {
+	ID            uint32 `json:"id"`
+	Player        uint32 `json:"player" gorm:"column:player;foreignKey:player;references:ID"`
+	PreferenceKey string `json:"key" gorm:"column:preferenceKey;foreignKey:preferenceKey;references:preferenceKey"`
+	ChosenValue   string `json:"chosenValue" gorm:"column:chosenValue"`
+}
+
+func (p *PlayerPreferenceModel) TableName() string {
+	return "PlayerPreference"
+}
+
+type PlayerPreferenceResponseDTO struct {
+	PreferenceKey string `json:"key" gorm:"column:preferenceKey;foreignKey:preferenceKey;references:preferenceKey"`
+	ChosenValue   string `json:"chosenValue" gorm:"column:chosenValue"`
+}
+
+func (p *PlayerPreferenceResponseDTO) TableName() string {
+	return "PlayerPreference"
 }
 
 // PlayerPreferencesResponse represents the data returned for a player's preferences.
 type PlayerPreferencesResponse struct {
-	Preferences []PlayerPreference `json:"preferences"`
+	Preferences []PlayerPreferenceResponseDTO `json:"preferences"`
 }
 
 // ColonyInfoResponse represents the data for a single colony.
@@ -68,6 +81,8 @@ func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	// Route for fetching a player's preferences by their ID
 	app.Get("/api/v1/player/:playerId/preferences", auth.PrefixOn(appContext, getPlayerPreferencesHandler))
 
+	app.Post("/api/v1/player/:playerId/preferences", auth.PrefixOn(appContext, setPlayerPreferenceHandler))
+
 	// Route for fetching colony info by colonyId and playerId
 	app.Get("/api/v1/player/:playerId/colony/:colonyId", auth.PrefixOn(appContext, getColonyInfoHandler))
 
@@ -79,6 +94,72 @@ func applyPlayerApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 
 	// Route for fetching a single player's info by their ID
 	app.Get("/api/v1/player/:playerId", auth.PrefixOn(appContext, getPlayerInfoHandler))
+	return nil
+}
+
+type SetPreferenceRequestDTO struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type AvailablePreferenceModel struct {
+	ID              uint32             `gorm:"primaryKey"`
+	PreferenceKey   string             `gorm:"column:preferenceKey"`
+	AvailableValues util.PGStringArray `gorm:"column:availableValues"`
+}
+
+func (a *AvailablePreferenceModel) TableName() string {
+	return "AvailablePreference"
+}
+
+func setPlayerPreferenceHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	playerId, parseErr := c.ParamsInt("playerId")
+	if parseErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+parseErr.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID "+parseErr.Error())
+	}
+
+	var request SetPreferenceRequestDTO
+	if err := c.BodyParser(&request); err != nil || request.Key == "" || request.Value == "" {
+		c.Response().Header.Set(appContext.DDH, "Invalid request body")
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	// Check if the preference key exists
+	var availablePreference AvailablePreferenceModel
+	if err := appContext.PlayerDB.Where(`"preferenceKey" = ?`, request.Key).First(&availablePreference).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "No such preference")
+			return fiber.NewError(fiber.StatusNotFound, "No such preference")
+		}
+
+		c.Response().Header.Set(appContext.DDH, "Internal server error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	var existingPreference PlayerPreferenceModel
+	if err := appContext.PlayerDB.Where(`"player" = ? AND "preferenceKey" = ?`, playerId, request.Key).First(&existingPreference).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Internal server error")
+			return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+		}
+	}
+
+	// If the preference already exists, update it
+	var updatedPreference = PlayerPreferenceModel{
+		ID:            existingPreference.ID,
+		Player:        uint32(playerId),
+		PreferenceKey: request.Key,
+		ChosenValue:   request.Value,
+	}
+
+	if setValueErr := appContext.PlayerDB.Table("PlayerPreference").
+		Save(&updatedPreference).Error; setValueErr != nil {
+		c.Response().Header.Set(appContext.DDH, "Internal server error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	c.Status(fiber.StatusOK)
 	return nil
 }
 
@@ -149,8 +230,13 @@ func getPlayerPreferencesHandler(c *fiber.Ctx, appContext *meta.ApplicationConte
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID "+parseErr.Error())
 	}
 
+	if !doesPlayerExist(appContext.PlayerDB, playerId) {
+		c.Response().Header.Set(appContext.DDH, "Player does not exist")
+		return fiber.NewError(fiber.StatusNotFound, "Player does not exist")
+	}
+
 	// Fetch player preferences and join them with available values
-	var preferences []PlayerPreference
+	var preferences []PlayerPreferenceResponseDTO
 	if err := appContext.PlayerDB.
 		Table(`PlayerPreference`).
 		Where(`"PlayerPreference".player = ?`, playerId).
@@ -174,6 +260,14 @@ func getPlayerPreferencesHandler(c *fiber.Ctx, appContext *meta.ApplicationConte
 
 	c.Status(fiber.StatusOK)
 	return c.JSON(response)
+}
+
+func doesPlayerExist(db database.PlayerDB, playerId int) bool {
+	var player PlayerDTO
+	if err := db.Table("Player").Where("id = ?", playerId).First(&player).Error; err != nil {
+		return false
+	}
+	return true
 }
 
 func getPlayerInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
