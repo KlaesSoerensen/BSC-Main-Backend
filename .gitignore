@@ -2,3 +2,4 @@ dev.credentials
 
 certs/*
 !certs/keepme
+package-lock.json
