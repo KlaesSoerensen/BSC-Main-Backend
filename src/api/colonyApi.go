@@ -16,12 +16,9 @@ func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Colony API] Applying colony API")
 
 	app.Get("/api/v1/colony/:colonyId/pathgraph", auth.PrefixOn(appContext, getPathGraphHandler))
-
-	// Route for opening a colony
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
-
-	// Route for joining a colony
 	app.Post("/api/v1/colony/join/:code", auth.PrefixOn(appContext, joinColonyHandler))
+	app.Post("/api/v1/colony/:colonyId/:playerId/visited", auth.PrefixOn(appContext, updateLatestVisitHandler))
 
 	return nil
 }
@@ -61,7 +58,8 @@ func getPathGraphHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 
 // OpenColonyRequest represents the request body for opening a colony
 type OpenColonyRequest struct {
-	PlayerID uint32 `json:"playerId"`
+	PlayerID    uint32 `json:"playerId"`
+	LatestVisit string `json:"latestVisit"`
 }
 
 // OpenColonyResponse represents the response for opening a colony
@@ -79,11 +77,12 @@ type JoinColonyResponse struct {
 
 // ColonyApiModel represents the Colony table for Colony API operations
 type ColonyApiModel struct {
-	ID         uint32             `gorm:"column:id;primaryKey"`
-	Name       string             `gorm:"column:name"`
-	AccLevel   int                `gorm:"column:accLevel"`
-	Owner      uint32             `gorm:"column:owner"`
-	ColonyCode ColonyCodeApiModel `gorm:"foreignKey:ColonyID"`
+	ID          uint32             `gorm:"column:id;primaryKey"`
+	Name        string             `gorm:"column:name"`
+	AccLevel    int                `gorm:"column:accLevel"`
+	Owner       uint32             `gorm:"column:owner"`
+	LatestVisit string             `gorm:"column:latestVisit"`
+	ColonyCode  ColonyCodeApiModel `gorm:"foreignKey:ColonyID"`
 }
 
 func (ColonyApiModel) TableName() string {
@@ -105,7 +104,6 @@ func (ColonyCodeApiModel) TableName() string {
 
 // openColonyHandler handles the request to open a colony
 func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-
 	colonyID, err := c.ParamsInt("colonyId")
 	if err != nil {
 		c.Response().Header.Set(appContext.DDH, "Invalid colony ID "+err.Error())
@@ -131,8 +129,15 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
+	// Update the LatestVisit field with the provided value
+	colony.LatestVisit = req.LatestVisit
+	if err := appContext.ColonyAssetDB.Save(&colony).Error; err != nil {
+		c.Response().Header.Set(appContext.DDH, "Failed to update LatestVisit "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update LatestVisit")
+	}
+
 	response := OpenColonyResponse{
-		Code:                     colony.ColonyCode.Value, // Use the Value field instead of ID
+		Code:                     colony.ColonyCode.Value,
 		LobbyID:                  colony.ColonyCode.LobbyID,
 		MultiplayerServerAddress: colony.ColonyCode.ServerAddress,
 	}
@@ -142,7 +147,6 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 
 // joinColonyHandler handles the request to join a colony
 func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-
 	code := c.Params("code")
 
 	// Check if the code is empty
@@ -190,5 +194,61 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	}
 
 	log.Printf("Successfully joined colony with code: %s", code)
+	return c.JSON(response)
+}
+
+// UpdateLatestVisitRequest represents the request body for updating the latest visit time
+type UpdateLatestVisitRequest struct {
+	LatestVisit string `json:"latestVisit"`
+}
+
+// UpdateLatestVisitResponse represents the response body after updating the latest visit time
+type UpdateLatestVisitResponse struct {
+	LatestVisit string `json:"latestVisit"`
+}
+
+// Add this new handler function
+func updateLatestVisitHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	colonyID, err := c.ParamsInt("colonyId")
+	if err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid colony ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
+	}
+
+	playerID, err := c.ParamsInt("playerId")
+	if err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID")
+	}
+
+	var req UpdateLatestVisitRequest
+	if err := c.BodyParser(&req); err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid request body "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	var colony ColonyApiModel
+	if err := appContext.ColonyAssetDB.
+		Where("id = ? AND owner = ?", colonyID, playerID).
+		First(&colony).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Colony not found or not owned by player "+err.Error())
+			return fiber.NewError(fiber.StatusNotFound, "Colony not found or not owned by player")
+		}
+		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	// Update the LatestVisit field with the provided value
+	colony.LatestVisit = req.LatestVisit
+	if err := appContext.ColonyAssetDB.Save(&colony).Error; err != nil {
+		c.Response().Header.Set(appContext.DDH, "Failed to update LatestVisit "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update LatestVisit")
+	}
+
+	response := UpdateLatestVisitResponse{
+		LatestVisit: colony.LatestVisit,
+	}
+
 	return c.JSON(response)
 }

@@ -3,3 +3,5 @@ dev.credentials
 certs/*
 !certs/keepme
 package-lock.json
+go.mod
+go.mod
