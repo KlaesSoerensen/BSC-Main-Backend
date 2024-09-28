@@ -8,7 +8,6 @@ import (
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/util"
 	"strconv"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -46,8 +45,8 @@ type ColonyInfoResponse struct {
 	AccLevel    uint32              `json:"accLevel" gorm:"column:accLevel"`
 	Name        string              `json:"name"`
 	LatestVisit string              `json:"latestVisit" gorm:"column:latestVisit"`
-	Assets      []ColonyAssetDTO    `json:"assets" gorm:"foreignKey:ColonyID;references:ID"`    // Define the foreign key for Assets
-	Locations   []ColonyLocationDTO `json:"locations" gorm:"foreignKey:ColonyID;references:ID"` // Also specify foreign key for Locations if needed
+	Assets      []ColonyAssetDTO    `json:"assets" gorm:"foreignKey:ColonyID;references:ID"`
+	Locations   []ColonyLocationDTO `json:"locations" gorm:"foreignKey:ColonyID;references:ID"`
 }
 
 // ColonyAssetDTO links to TransformDTO with a proper foreign key reference
@@ -307,13 +306,12 @@ func getPlayerInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 type ColonyModel struct {
 	ID          uint32 `gorm:"primaryKey"`
 	Name        string
-	AccLevel    uint32    `gorm:"column:accLevel"`
-	LatestVisit time.Time `gorm:"column:latestVisit"`
-	ColonyCode  uint32    `gorm:"foreignKey:ColonyCode;references:ID;column:colonyCode"`
-	// Player in PlayerDB
-	Owner     uint32
-	Assets    util.PGIntArray
-	Locations util.PGIntArray
+	AccLevel    uint32 `gorm:"column:accLevel"`
+	LatestVisit string `gorm:"column:latestVisit"`
+	ColonyCode  uint32 `gorm:"foreignKey:ColonyCode;references:ID;column:colonyCode"`
+	Owner       uint32
+	Assets      util.PGIntArray
+	Locations   util.PGIntArray
 }
 
 func (c *ColonyModel) TableName() string {
@@ -462,7 +460,7 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 		ID          uint32                   `json:"id"`
 		AccLevel    uint32                   `json:"accLevel"`
 		Name        string                   `json:"name"`
-		LatestVisit time.Time                `json:"latestVisit"`
+		LatestVisit string                `json:"latestVisit"`
 		Assets      []AssetTransformTuple    `json:"assets"`
 		Locations   []LocationTransformTuple `json:"locations"`
 	}{
@@ -501,13 +499,13 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	}
 
 	type ColonyData struct {
-		ID          uint32    `json:"id"`
-		AccLevel    uint32    `json:"accLevel"`
-		Name        string    `json:"name"`
-		LatestVisit time.Time `json:"latestVisit"`
-		Assets      []uint32  `json:"assets"`
-		Locations   []uint32  `json:"locations"`
-	}
+        ID          uint32  `json:"id"`
+        AccLevel    uint32  `json:"accLevel"`
+        Name        string  `json:"name"`
+        LatestVisit string  `json:"latestVisit"`
+        Assets      []uint32 `json:"assets"`
+        Locations   []uint32 `json:"locations"`
+    }
 	// Prepare the response with the anonymous struct
 	var colonyResponses = make([]ColonyData, 0, len(colonies))
 	for _, colony := range colonies {
@@ -574,7 +572,7 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		Name:        colonyName,
 		Owner:       uint32(playerId), // Set the player as the owner
 		AccLevel:    0,                // Default access level
-		LatestVisit: time.Now(),       // Set current time as latest visit
+		LatestVisit: "DATA.UNVISITED.COLONY",
 		Assets:      make([]int, 0),   // Empty assets array
 		Locations:   make([]int, 0),   // Empty locations array
 	}
@@ -590,7 +588,7 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		ID          uint32    `json:"id"`
 		Name        string    `json:"name"`
 		AccLevel    uint32    `json:"accLevel"`
-		LatestVisit time.Time `json:"latestVisit"`
+		LatestVisit string `json:"latestVisit"`
 	}{
 		ID:          newColony.ID,
 		Name:        newColony.Name,
