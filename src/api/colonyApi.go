@@ -18,7 +18,7 @@ func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	app.Get("/api/v1/colony/:colonyId/pathgraph", auth.PrefixOn(appContext, getPathGraphHandler))
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
 	app.Post("/api/v1/colony/join/:code", auth.PrefixOn(appContext, joinColonyHandler))
-	app.Post("/api/v1/colony/:colonyId/:playerId/visited", auth.PrefixOn(appContext, updateLatestVisitHandler))
+	app.Post("/api/v1/colony/:colonyId/update-last-visit", auth.PrefixOn(appContext, updateLatestVisitHandler))
 
 	return nil
 }
@@ -215,12 +215,6 @@ func updateLatestVisitHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
 	}
 
-	playerID, err := c.ParamsInt("playerId")
-	if err != nil {
-		c.Response().Header.Set(appContext.DDH, "Invalid player ID "+err.Error())
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid player ID")
-	}
-
 	var req UpdateLatestVisitRequest
 	if err := c.BodyParser(&req); err != nil {
 		c.Response().Header.Set(appContext.DDH, "Invalid request body "+err.Error())
@@ -229,7 +223,7 @@ func updateLatestVisitHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 
 	var colony ColonyApiModel
 	if err := appContext.ColonyAssetDB.
-		Where("id = ? AND owner = ?", colonyID, playerID).
+		Where("id = ?", colonyID).
 		First(&colony).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Response().Header.Set(appContext.DDH, "Colony not found or not owned by player "+err.Error())
