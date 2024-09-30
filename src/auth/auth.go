@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"otte_main_backend/src/api/local"
 	"otte_main_backend/src/config"
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/middleware"
@@ -107,6 +108,7 @@ func fullSessionCheckAuth(authService *AuthService, c *fiber.Ctx, appContext *me
 		//If cache entry
 		if time.Since(cacheEntry.CreatedAt) < time.Minute {
 			//If cache entry is valid (within 1 minute)
+			appendLocalsToContext(c, cacheEntry.Entry)
 			return nil
 		}
 	}
@@ -129,8 +131,14 @@ func fullSessionCheckAuth(authService *AuthService, c *fiber.Ctx, appContext *me
 	authService.SessionCache.Store(session.Token, CacheEntry[Session]{Entry: &session, CreatedAt: time.Now()})
 	// update last checkin async
 	go UpdateLastPlayerCheckin(&session, appContext)
+	appendLocalsToContext(c, &session)
 	return nil
 }
+
+func appendLocalsToContext(c *fiber.Ctx, session *Session) {
+	c.Locals(local.Session, session)
+}
+
 func naiveCheckForHeaderAuth(context *fiber.Ctx, tokenName string, defaultDebugHeader string) *fiber.Error {
 	authHeaderContent := context.Request().Header.Peek(tokenName)
 	if len(authHeaderContent) == 0 {
