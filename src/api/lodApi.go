@@ -1,8 +1,6 @@
 package api
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"log"
 	"net/http"
@@ -43,8 +41,8 @@ type LOD struct {
 	DetailLevel    uint32 `json:"detailLevel" gorm:"column:detailLevel"`
 	GraphicalAsset uint32 `json:"graphicalAsset" gorm:"column:graphicalAsset"`
 	Blob           []byte `json:"blob" gorm:"column:blob"`
-
-	MIMEType string `json:"type" gorm:"column:type"`
+	ETag           string `json:"etag" gorm:"column:etag"`
+	MIMEType       string `json:"type" gorm:"column:type"`
 }
 
 func (lod *LOD) TableName() string {
@@ -82,13 +80,7 @@ func SetHeadersForLODBlob(c *fiber.Ctx, lod *LOD) {
 	c.Response().Header.Set(assetIDHeaderName, strconv.FormatUint(uint64(lod.GraphicalAsset), 10))
 	c.Response().Header.SetContentType(lod.MIMEType)
 	c.Response().Header.SetContentLength(len(lod.Blob))
-
-	hasher := sha256.New()
-	hasher.Write(lod.Blob)
-	//ETag is a value meant for version control of some resource
-	// see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag
-	etag := hex.EncodeToString(hasher.Sum(nil))
-	c.Response().Header.Set("ETag", etag)
+	c.Response().Header.Set("ETag", lod.ETag)
 
 	oneYear := 365 * 24 * time.Hour
 	c.Response().Header.Set("Cache-Control", "public, max-age=31536000, immutable")
