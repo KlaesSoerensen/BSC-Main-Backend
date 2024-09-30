@@ -161,13 +161,11 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	matched, err := regexp.MatchString(`^\d{6}$`, code)
 	if err != nil {
 		errorMsg := "Error in code validation: " + err.Error()
-		log.Println(errorMsg)
 		c.Response().Header.Set(appContext.DDH, errorMsg)
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 	if !matched {
 		errorMsg := "Invalid colony code format: Code must be exactly 6 numeric characters"
-		log.Println(errorMsg)
 		c.Response().Header.Set(appContext.DDH, errorMsg)
 		return fiber.NewError(fiber.StatusBadRequest, errorMsg)
 	}
