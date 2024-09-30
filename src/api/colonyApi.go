@@ -73,6 +73,7 @@ type OpenColonyResponse struct {
 type JoinColonyResponse struct {
 	LobbyID                  uint32 `json:"lobbyId"`
 	MultiplayerServerAddress string `json:"multiplayerServerAddress"`
+	Owner                    uint32 `json:"owner"`
 }
 
 // ColonyApiModel represents the Colony table for Colony API operations
@@ -96,6 +97,7 @@ type ColonyCodeApiModel struct {
 	ServerAddress string `gorm:"column:serverAddress"`
 	ColonyID      uint32 `gorm:"column:colony"`
 	Value         string `gorm:"column:value"`
+	OwnerID       uint32 `gorm:"column:owner"`
 }
 
 func (ColonyCodeApiModel) TableName() string {
@@ -187,6 +189,7 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	}
 
 	response := JoinColonyResponse{
+		Owner:                    colonyCode.OwnerID,
 		LobbyID:                  colonyCode.LobbyID,
 		MultiplayerServerAddress: colonyCode.ServerAddress,
 	}
