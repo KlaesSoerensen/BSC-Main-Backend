@@ -165,9 +165,10 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 
 var localRand = rand.New(rand.NewSource(0))
 
+// Generates a code with 6 digits
 func generateColonyCode() string {
-	value := localRand.Uint32()
-	return fmt.Sprintf("%06d", value)
+	number := localRand.Intn(1000000)
+	return fmt.Sprintf("%06d", number)
 }
 
 // joinColonyHandler handles the request to join a colony
