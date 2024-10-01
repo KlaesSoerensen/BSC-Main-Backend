@@ -41,7 +41,15 @@ func setupPlayerTest(t *testing.T) (sqlmock.Sqlmock, *fiber.App, *meta.Applicati
 	}
 
 	app := fiber.New()
-	appContext := meta.CreateApplicationContext(gormDB, gormDB, gormDB, nil, "Test-DDH")
+	appContext := &meta.ApplicationContext{
+		ColonyAssetDB:            gormDB,
+		LanguageDB:               gormDB,
+		PlayerDB:                 gormDB,
+		VitecIntegration:         nil,
+		DDH:                      "Test-DDH",
+		AuthTokenName:            "Test-Auth-Token-Name",
+		MultiplayerServerAddress: "notset",
+	}
 
 	err = applyPlayerApi(app, appContext)
 	if err != nil {

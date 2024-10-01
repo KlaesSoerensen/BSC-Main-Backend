@@ -2,7 +2,9 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"math/rand"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
 	"regexp"
@@ -133,9 +135,22 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 
 	// Update the LatestVisit field with the provided value
 	colony.LatestVisit = req.LatestVisit
-	if err := appContext.ColonyAssetDB.Save(&colony).Error; err != nil {
-		c.Response().Header.Set(appContext.DDH, "Failed to update LatestVisit "+err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update LatestVisit")
+
+	var isGood = false
+	for !isGood {
+		code := generateColonyCode()
+		colony.ColonyCode.Value = code
+
+		if err := appContext.ColonyAssetDB.Save(&colony).Error; err != nil {
+			if errors.Is(err, gorm.ErrDuplicatedKey) {
+				isGood = false
+				continue
+			}
+
+			c.Response().Header.Set(appContext.DDH, "Failed to update ColonyCode "+err.Error())
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to update ColonyCode")
+		}
+		isGood = true
 	}
 
 	response := OpenColonyResponse{
@@ -145,6 +160,13 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	}
 
 	return c.JSON(response)
+}
+
+var localRand = rand.New(rand.NewSource(0))
+
+func generateColonyCode() string {
+	value := localRand.Uint32()
+	return fmt.Sprintf("%06d", value)
 }
 
 // joinColonyHandler handles the request to join a colony
