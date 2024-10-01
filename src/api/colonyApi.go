@@ -134,7 +134,7 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
-	lobbyID, err := multiplayer.CreateLobby(req.PlayerID, appContext)
+	lobbyID, err := multiplayer.CreateLobby(req.PlayerID, colony.ID, appContext)
 	if err != nil {
 		c.Response().Header.Set(appContext.DDH, "Failed to create lobby "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create lobby")

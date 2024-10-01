@@ -12,8 +12,8 @@ type CreateLobbyResponseDTO struct {
 }
 
 // Returns lobbyID, error
-func CreateLobby(ownerID uint32, appContext *meta.ApplicationContext) (uint32, error) {
-	url := fmt.Sprintf("%s/create-lobby?ownerID=%d&encoding=binary", appContext.MultiplayerServerAddress, ownerID)
+func CreateLobby(ownerID uint32, colonyID uint32, appContext *meta.ApplicationContext) (uint32, error) {
+	url := fmt.Sprintf("%s/create-lobby?ownerID=%d&encoding=binary&colonyID=%d", appContext.MultiplayerServerAddress, ownerID, colonyID)
 	body, err := makeEmptyPostRequest(url)
 	if err != nil {
 		return 0, fmt.Errorf("error creating lobby: %v", err)
