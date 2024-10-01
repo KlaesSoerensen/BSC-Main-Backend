@@ -9,6 +9,7 @@ import (
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/multiplayer"
 	"regexp"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -19,8 +20,11 @@ func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	log.Println("[Colony API] Applying colony API")
 
 	app.Get("/api/v1/colony/:colonyId/pathgraph", auth.PrefixOn(appContext, getPathGraphHandler))
+
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
+
 	app.Post("/api/v1/colony/join/:code", auth.PrefixOn(appContext, joinColonyHandler))
+
 	app.Post("/api/v1/colony/:colonyId/update-last-visit", auth.PrefixOn(appContext, updateLatestVisitHandler))
 
 	return nil
@@ -61,6 +65,7 @@ func getPathGraphHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 
 // OpenColonyRequest represents the request body for opening a colony
 type OpenColonyRequest struct {
+	DurationMS  uint32 `json:"validDurationMS"` // Duration in seconds
 	PlayerID    uint32 `json:"playerId"`
 	LatestVisit string `json:"latestVisit"`
 }
@@ -81,29 +86,31 @@ type JoinColonyResponse struct {
 
 // ColonyApiModel represents the Colony table for Colony API operations
 type ColonyApiModel struct {
-	ID          uint32             `gorm:"column:id;primaryKey"`
-	Name        string             `gorm:"column:name"`
-	AccLevel    int                `gorm:"column:accLevel"`
-	Owner       uint32             `gorm:"column:owner"`
-	LatestVisit string             `gorm:"column:latestVisit"`
-	ColonyCode  ColonyCodeApiModel `gorm:"foreignKey:ColonyID"`
+	ID          uint32           `gorm:"column:id;primaryKey"`
+	Name        string           `gorm:"column:name"`
+	AccLevel    int              `gorm:"column:accLevel"`
+	Owner       uint32           `gorm:"column:owner"`
+	LatestVisit string           `gorm:"column:latestVisit"`
+	ColonyCode  *ColonyCodeModel `gorm:"foreignKey:ColonyID"`
 }
 
 func (ColonyApiModel) TableName() string {
 	return "Colony"
 }
 
-// ColonyCodeApiModel represents the ColonyCode table for Colony API operations
-type ColonyCodeApiModel struct {
-	ID            uint32 `gorm:"column:id;primaryKey"`
-	LobbyID       uint32 `gorm:"column:lobbyId"`
-	ServerAddress string `gorm:"column:serverAddress"`
-	ColonyID      uint32 `gorm:"column:colony"`
-	Value         string `gorm:"column:value"`
-	OwnerID       uint32 `gorm:"column:owner"`
+// ColonyCodeModel represents the ColonyCode table for Colony API operations
+type ColonyCodeModel struct {
+	ID              uint32    `gorm:"column:id;primaryKey"`
+	LobbyID         uint32    `gorm:"column:lobbyId"`
+	ServerAddress   string    `gorm:"column:serverAddress"`
+	ColonyID        uint32    `gorm:"column:colony"`
+	Value           string    `gorm:"column:value"`
+	OwnerID         uint32    `gorm:"column:owner"`
+	CreatedAt       time.Time `gorm:"column:createdAt"`
+	ValidDurationMS uint32    `gorm:"column:validDurationMS"`
 }
 
-func (ColonyCodeApiModel) TableName() string {
+func (ColonyCodeModel) TableName() string {
 	return "ColonyCode"
 }
 
@@ -116,9 +123,12 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	}
 
 	var req OpenColonyRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil || req.PlayerID == 0 {
 		c.Response().Header.Set(appContext.DDH, "Invalid request body "+err.Error())
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	if req.DurationMS == 0 {
+		req.DurationMS = 300000 // 5 minutes
 	}
 
 	var colony ColonyApiModel
@@ -133,6 +143,23 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
+	log.Println(colony.ColonyCode)
+	//If a code already exists
+	if colony.ColonyCode != nil {
+		log.Println("Colony code not nil")
+		log.Println("Comparing time ", colony.ColonyCode.CreatedAt.Add(time.Duration(colony.ColonyCode.ValidDurationMS)*time.Millisecond), " with ", time.Now())
+		//And it is still valid
+		if colony.ColonyCode.CreatedAt.Add(time.Duration(colony.ColonyCode.ValidDurationMS) * time.Millisecond).After(time.Now()) {
+			log.Println("Colony code not expired")
+			response := OpenColonyResponse{
+				Code:                     colony.ColonyCode.Value,
+				LobbyID:                  colony.ColonyCode.LobbyID,
+				MultiplayerServerAddress: colony.ColonyCode.ServerAddress,
+			}
+			c.Status(fiber.StatusOK)
+			return c.JSON(response)
+		}
+	}
 
 	lobbyID, err := multiplayer.CreateLobby(req.PlayerID, colony.ID, appContext)
 	if err != nil {
@@ -140,17 +167,19 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create lobby")
 	}
 
-	// Update the LatestVisit field with the provided value
 	colony.LatestVisit = req.LatestVisit
-	colony.ColonyCode.OwnerID = colony.Owner
-	colony.ColonyCode.LobbyID = lobbyID
-	colony.ColonyCode.ServerAddress = appContext.MultiplayerServerAddress
+	colony.ColonyCode = &ColonyCodeModel{
+		LobbyID:         lobbyID,
+		ServerAddress:   appContext.MultiplayerServerAddress,
+		ColonyID:        colony.ID,
+		OwnerID:         req.PlayerID,
+		ValidDurationMS: req.DurationMS,
+		CreatedAt:       time.Now(),
+	}
 
 	var isGood = false
 	for !isGood {
-		code := generateColonyCode()
-		colony.ColonyCode.Value = code
-
+		colony.ColonyCode.Value = generateColonyCode()
 		if err := appContext.ColonyAssetDB.Save(&colony).Error; err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
 				isGood = false
@@ -168,7 +197,7 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		LobbyID:                  colony.ColonyCode.LobbyID,
 		MultiplayerServerAddress: colony.ColonyCode.ServerAddress,
 	}
-
+	c.Status(fiber.StatusOK)
 	return c.JSON(response)
 }
 
@@ -205,7 +234,7 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		return fiber.NewError(fiber.StatusBadRequest, errorMsg)
 	}
 
-	var colonyCode ColonyCodeApiModel
+	var colonyCode ColonyCodeModel
 	if err := appContext.ColonyAssetDB.
 		Where("value = ?", code).
 		First(&colonyCode).Error; err != nil {
@@ -219,6 +248,14 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		log.Println(errorMsg)
 		c.Response().Header.Set(appContext.DDH, errorMsg)
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	if colonyCode.CreatedAt.Add(time.Duration(colonyCode.ValidDurationMS) * time.Millisecond).After(time.Now()) {
+		appContext.ColonyAssetDB.Delete(&colonyCode)
+
+		c.Status(fiber.StatusNotFound)
+		c.Response().Header.Set(appContext.DDH, "Code expired")
+		return fiber.NewError(fiber.StatusNotFound, "Colony code not found: "+code)
 	}
 
 	response := JoinColonyResponse{
