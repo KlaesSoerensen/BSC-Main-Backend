@@ -23,7 +23,7 @@ const (
 var UNVERIFIABLE_USER error = fmt.Errorf("user could not be verified")
 
 func neverVerifyUser(integration *VitecIntegration, initiationDTO *SessionInitiationDTO) error {
-	log.Println("[MV INT] User verification currently disabled")
+	log.Println("[MV INT] User cross verification currently disabled")
 	return nil
 }
 
