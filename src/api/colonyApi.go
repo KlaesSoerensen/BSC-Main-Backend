@@ -135,6 +135,7 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 
 	// Update the LatestVisit field with the provided value
 	colony.LatestVisit = req.LatestVisit
+	colony.ColonyCode.OwnerID = colony.Owner
 
 	var isGood = false
 	for !isGood {
