@@ -584,7 +584,6 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 	}()
 
 	handleError := func(errMsg string, err error) error {
-		tx.Rollback() // Ensure rollback of the entire transaction
 		log.Printf("%s: %v", errMsg, err)
 		c.Response().Header.Set(appContext.DDH, errMsg+": "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Error creating colony")
@@ -610,19 +609,29 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		return handleError("Error inserting transforms", err)
 	}
 
-	// Insert colony locations
-	if err := colony.InsertColonyLocations(appContext, tx, uint(newColony.ID), transformIDs); err != nil {
+	// Insert colony locations and get the locationIDMap
+	locationIDMap, err := colony.InsertColonyLocations(appContext, tx, uint(newColony.ID), transformIDs)
+	if err != nil {
 		return handleError("Error inserting colony locations", err)
 	}
 
-	// Initialize colony paths
-	if err := colony.InitializeColonyPaths(tx, newColony.ID); err != nil {
+	// Commit colony locations to ensure they exist for path insertion
+	if err := tx.Commit().Error; err != nil {
+		return handleError("Error committing colony locations", err)
+	}
+
+	// Start a new transaction for inserting paths
+	tx = appContext.ColonyAssetDB.Begin()
+
+	// Insert colony paths using locationIDMap
+	if err := colony.InitializeColonyPaths(tx, newColony.ID, locationIDMap); err != nil {
+		tx.Rollback()
 		return handleError("Error initializing colony paths", err)
 	}
 
 	// Commit the remaining transaction
 	if err := tx.Commit().Error; err != nil {
-		return handleError("Error committing transaction", err)
+		return handleError("Error committing colony paths", err)
 	}
 
 	// Return the newly created colony details

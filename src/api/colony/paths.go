@@ -1,6 +1,8 @@
 package colony
 
 import (
+	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -15,43 +17,58 @@ func (ColonyLocationPath) TableName() string {
 	return "ColonyLocationPath"
 }
 
-func InitializeColonyPaths(tx *gorm.DB, colonyID uint32) error {
-	paths := []ColonyLocationPath{
-		// Central Hub: Town Hall
-		{Colony: colonyID, LocationA: getTownHallID(), LocationB: getHomeID()},
-		{Colony: colonyID, LocationA: getTownHallID(), LocationB: getCantinaID()},
-		{Colony: colonyID, LocationA: getTownHallID(), LocationB: getVehicleStorageID()},
-		{Colony: colonyID, LocationA: getTownHallID(), LocationB: getAgricultureCenterID()},
-		{Colony: colonyID, LocationA: getTownHallID(), LocationB: getAquiferPlantID()},
-		{Colony: colonyID, LocationA: getTownHallID(), LocationB: getShieldGeneratorsID()},
-		// Residential Area
-		{Colony: colonyID, LocationA: getHomeID(), LocationB: getCantinaID()},
-		// Industrial and Defensive Area
-		{Colony: colonyID, LocationA: getVehicleStorageID(), LocationB: getMiningFacilityID()},
-		{Colony: colonyID, LocationA: getVehicleStorageID(), LocationB: getRadarDishID()},
-		// Agricultural Zone
-		{Colony: colonyID, LocationA: getAgricultureCenterID(), LocationB: getAquiferPlantID()},
-		// Defensive Perimeter and Endpoints
-		{Colony: colonyID, LocationA: getRadarDishID(), LocationB: getOuterWallsID()},
-		{Colony: colonyID, LocationA: getRadarDishID(), LocationB: getSpacePortID()},
+func InitializeColonyPaths(tx *gorm.DB, colonyID uint32, locationIDMap map[uint]uint) error {
+	paths := []struct {
+		LocationA uint
+		LocationB uint
+	}{
+		{uint(getTownHallID()), uint(getHomeID())},
+		{uint(getTownHallID()), uint(getCantinaID())},
+		{uint(getTownHallID()), uint(getVehicleStorageID())},
+		{uint(getTownHallID()), uint(getAgricultureCenterID())},
+		{uint(getTownHallID()), uint(getAquiferPlantID())},
+		{uint(getTownHallID()), uint(getShieldGeneratorsID())},
+		{uint(getHomeID()), uint(getCantinaID())},
+		{uint(getVehicleStorageID()), uint(getMiningFacilityID())},
+		{uint(getVehicleStorageID()), uint(getRadarDishID())},
+		{uint(getAgricultureCenterID()), uint(getAquiferPlantID())},
+		{uint(getRadarDishID()), uint(getOuterWallsID())},
+		{uint(getRadarDishID()), uint(getSpacePortID())},
 	}
 
-	// Create duplicate entries for each path to represent both directions
-	duplicatedPaths := make([]ColonyLocationPath, 0, len(paths)*2)
-	for _, path := range paths {
-		// Original direction
-		duplicatedPaths = append(duplicatedPaths, path)
-		// Reverse direction
-		duplicatedPaths = append(duplicatedPaths, ColonyLocationPath{
-			Colony:    path.Colony,
-			LocationA: path.LocationB,
-			LocationB: path.LocationA,
-		})
-	}
+	for _, loc := range paths {
+		// Print the path being processed
+		fmt.Printf("Processing path: LocationA: %v, LocationB: %v\n", loc.LocationA, loc.LocationB)
 
-	// Insert the paths into the database
-	for _, path := range duplicatedPaths {
+		// Use the map to get the ColonyLocation ID
+		locationAID, okA := locationIDMap[loc.LocationA]
+		locationBID, okB := locationIDMap[loc.LocationB]
+
+		if !okA || !okB {
+			// Print the missing key and the map for further debugging
+			fmt.Printf("Missing location ID: LocationA: %v, LocationB: %v\n", loc.LocationA, loc.LocationB)
+			return fmt.Errorf("location IDs not found in map")
+		}
+
+		// Insert the path using ColonyLocation IDs
+		path := ColonyLocationPath{
+			Colony:    colonyID,
+			LocationA: uint32(locationAID), // Cast to uint32
+			LocationB: uint32(locationBID), // Cast to uint32
+		}
+
 		if err := tx.Create(&path).Error; err != nil {
+			return err
+		}
+
+		// Optionally, insert the reverse path
+		reversePath := ColonyLocationPath{
+			Colony:    colonyID,
+			LocationA: uint32(locationBID), // Cast to uint32
+			LocationB: uint32(locationAID), // Cast to uint32
+		}
+
+		if err := tx.Create(&reversePath).Error; err != nil {
 			return err
 		}
 	}
