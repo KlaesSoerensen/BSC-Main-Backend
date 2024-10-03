@@ -60,10 +60,11 @@ func (t *TransformDTO) TableName() string {
 }
 
 type MinimizedAssetDTO struct {
-	HasLODs bool         `json:"hasLODs"`
-	Width   uint32       `json:"width"`
-	Height  uint32       `json:"height"`
-	LODs    []LODDetails `json:"LODs"`
+	Width  uint32          `json:"width"`
+	Height uint32          `json:"height"`
+	Alias  string          `json:"alias"`
+	Type   string          `json:"type"`
+	LODs   []LODDetailsDTO `json:"LODs"`
 }
 
 // PlayerDTO represents the data returned for a player's basic information.
