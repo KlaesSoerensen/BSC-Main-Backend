@@ -579,11 +579,43 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 
 	defer func() {
 		if r := recover(); r != nil {
-			tx.Rollback()
+			tx.Rollback() // Rollback on panic
 		}
 	}()
 
-	handleError := func(errMsg string, err error) error {
+	handleError := func(errMsg string, err error, deleteColony bool, locationIDMap map[uint]uint, transformIDs map[string]uint, newColony *ColonyModel) error {
+		tx.Rollback() // Always rollback the current transaction
+
+		// Ensure locations are deleted first, followed by transforms, and then colony itself
+		if deleteColony {
+			// Extract location IDs
+			var locationIDValues []uint
+			for _, id := range locationIDMap {
+				locationIDValues = append(locationIDValues, id)
+			}
+
+			// Delete locations first
+			if len(locationIDValues) > 0 {
+				appContext.ColonyAssetDB.Where("id IN ?", locationIDValues).Delete(&colony.ColonyLocation{})
+			}
+
+			// Extract transform IDs
+			var transformIDValues []uint
+			for _, id := range transformIDs {
+				transformIDValues = append(transformIDValues, id)
+			}
+
+			// Delete transforms next
+			if len(transformIDValues) > 0 {
+				appContext.ColonyAssetDB.Where("id IN ?", transformIDValues).Delete(&colony.Transform{})
+			}
+
+			// Finally, delete the colony
+			if newColony != nil {
+				appContext.ColonyAssetDB.Delete(newColony)
+			}
+		}
+
 		log.Printf("%s: %v", errMsg, err)
 		c.Response().Header.Set(appContext.DDH, errMsg+": "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Error creating colony")
@@ -600,38 +632,45 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 	}
 
 	if err := tx.Create(&newColony).Error; err != nil {
-		return handleError("Error creating colony", err)
+		return handleError("Error creating colony", err, false, nil, nil, nil)
 	}
+
+	// Commit colony creation to allow foreign keys in the next steps
+	if err := tx.Commit().Error; err != nil {
+		return handleError("Error committing colony creation", err, false, nil, nil, &newColony)
+	}
+
+	// Start a new transaction for colony locations
+	tx = appContext.ColonyAssetDB.Begin()
 
 	// Insert transforms
 	transformIDs, err := colony.InsertTransforms(appContext, tx)
 	if err != nil {
-		return handleError("Error inserting transforms", err)
+		return handleError("Error inserting transforms", err, true, nil, transformIDs, &newColony)
 	}
 
-	// Insert colony locations and get the locationIDMap
+	// Insert colony locations and commit them
 	locationIDMap, err := colony.InsertColonyLocations(appContext, tx, uint(newColony.ID), transformIDs)
 	if err != nil {
-		return handleError("Error inserting colony locations", err)
+		return handleError("Error inserting colony locations", err, true, nil, transformIDs, &newColony)
 	}
 
 	// Commit colony locations to ensure they exist for path insertion
 	if err := tx.Commit().Error; err != nil {
-		return handleError("Error committing colony locations", err)
+		return handleError("Error committing colony locations", err, true, locationIDMap, transformIDs, &newColony)
 	}
 
-	// Start a new transaction for inserting paths
+	// Start another transaction for inserting paths
 	tx = appContext.ColonyAssetDB.Begin()
 
 	// Insert colony paths using locationIDMap
 	if err := colony.InitializeColonyPaths(tx, newColony.ID, locationIDMap); err != nil {
-		tx.Rollback()
-		return handleError("Error initializing colony paths", err)
+		return handleError("Error initializing colony paths", err, true, locationIDMap, transformIDs, &newColony)
 	}
 
-	// Commit the remaining transaction
+	// Commit the path insertions
 	if err := tx.Commit().Error; err != nil {
-		return handleError("Error committing colony paths", err)
+		return handleError("Error committing colony paths", err, true, locationIDMap, transformIDs, &newColony)
 	}
 
 	// Return the newly created colony details
