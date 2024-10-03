@@ -19,11 +19,11 @@ func (ColonyLocation) TableName() string {
 	return "ColonyLocation"
 }
 
-func InsertColonyLocations(appContext *meta.ApplicationContext, tx *gorm.DB, colonyID uint, transformIDs map[string]uint) error {
+func InsertColonyLocations(appContext *meta.ApplicationContext, tx *gorm.DB, colonyID uint, transformIDs map[string]uint) (map[uint]uint, error) {
 	locations := []struct {
-		Name  string
-		ID    uint
-		Level int
+		Name     string
+		Location uint
+		Level    int
 	}{
 		{"LOCATION.TOWN_HALL.NAME", 40, 1},
 		{"LOCATION.CANTINA.NAME", 90, 1},
@@ -35,19 +35,26 @@ func InsertColonyLocations(appContext *meta.ApplicationContext, tx *gorm.DB, col
 		{"LOCATION.MINING_FACILITY.NAME", 110, 1},
 		{"LOCATION.OUTER_WALLS.NAME", 10, 1},
 		{"LOCATION.SPACE_PORT.NAME", 20, 1},
+		{"LOCATION.AGRICULTURE_CENTER.NAME", 70, 1},
 	}
+
+	// Map to store location ID -> ColonyLocation ID
+	locationIDMap := make(map[uint]uint)
 
 	for _, loc := range locations {
 		colonyLocation := ColonyLocation{
 			Colony:    colonyID,
-			Location:  loc.ID,
+			Location:  loc.Location,
 			Transform: transformIDs[loc.Name],
 			Level:     loc.Level,
 		}
 		if err := tx.Create(&colonyLocation).Error; err != nil {
-			return err
+			return nil, err
 		}
+
+		// Add to map: location -> ColonyLocation ID
+		locationIDMap[loc.Location] = colonyLocation.ID
 	}
 
-	return nil
+	return locationIDMap, nil
 }

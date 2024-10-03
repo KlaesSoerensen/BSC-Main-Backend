@@ -31,6 +31,7 @@ func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[str
 		{XScale: 1, YScale: 1, XOffset: 600, YOffset: 100, ZIndex: 100},   // Mining Facility
 		{XScale: 1, YScale: 1, XOffset: 900, YOffset: -100, ZIndex: 100},  // Outer Walls
 		{XScale: 1, YScale: 1, XOffset: 900, YOffset: 100, ZIndex: 100},   // Space Port
+		{XScale: 1, YScale: 1, XOffset: 0, YOffset: -400, ZIndex: 100},    // Agriculture Center
 	}
 
 	transformIDs := make(map[string]uint)
@@ -45,6 +46,7 @@ func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[str
 		"LOCATION.MINING_FACILITY.NAME",
 		"LOCATION.OUTER_WALLS.NAME",
 		"LOCATION.SPACE_PORT.NAME",
+		"LOCATION.AGRICULTURE_CENTER.NAME",
 	}
 
 	for i, transform := range transforms {
