@@ -1,21 +1,21 @@
-package local
+package colony
 
 import (
 	"gorm.io/gorm"
 )
 
 type ColonyLocationPath struct {
-	ID        uint32 `gorm:"primaryKey"`
-	Colony    uint32
-	LocationA uint32
-	LocationB uint32
+	ID        uint32 `gorm:"column:id;primaryKey"`
+	Colony    uint32 `gorm:"column:colony"`
+	LocationA uint32 `gorm:"column:locationA"`
+	LocationB uint32 `gorm:"column:locationB"`
 }
 
 func (ColonyLocationPath) TableName() string {
 	return "ColonyLocationPath"
 }
 
-func InitializeColonyPaths(db *gorm.DB, colonyID uint32) error {
+func InitializeColonyPaths(tx *gorm.DB, colonyID uint32) error {
 	paths := []ColonyLocationPath{
 		// Central Hub: Town Hall
 		{Colony: colonyID, LocationA: getTownHallID(), LocationB: getHomeID()},
@@ -51,7 +51,7 @@ func InitializeColonyPaths(db *gorm.DB, colonyID uint32) error {
 
 	// Insert the paths into the database
 	for _, path := range duplicatedPaths {
-		if err := db.Create(&path).Error; err != nil {
+		if err := tx.Create(&path).Error; err != nil {
 			return err
 		}
 	}

@@ -3,7 +3,7 @@ package api
 import (
 	"errors"
 	"log"
-	"otte_main_backend/src/api/local"
+	"otte_main_backend/src/api/colony"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/database"
 	"otte_main_backend/src/meta"
@@ -544,6 +544,11 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	return c.JSON(overviewResponse)
 }
 
+// CreateColonyRequest defines the structure for the colony creation request
+type CreateColonyRequest struct {
+	Name string `json:"name,omitempty"`
+}
+
 // Handler for creating a new colony with bare essentials
 func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
 	// Get playerId from URL parameters
@@ -554,9 +559,6 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 	}
 
 	// Parse request body for optional colony name
-	type CreateColonyRequest struct {
-		Name string `json:"name,omitempty"`
-	}
 	var request CreateColonyRequest
 	if err := c.BodyParser(&request); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
@@ -568,49 +570,59 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		colonyName = "DATA.UNNAMED.COLONY"
 	}
 
-	// Start a transaction
+	// Start a transaction for the colony insert
 	tx := appContext.ColonyAssetDB.Begin()
 	if tx.Error != nil {
 		c.Response().Header.Set(appContext.DDH, "Error starting transaction: "+tx.Error.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Error starting transaction")
 	}
 
-	// Defer a rollback in case anything fails
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
 		}
 	}()
 
-	// Prepare the new colony with default values
+	handleError := func(errMsg string, err error) error {
+		tx.Rollback() // Ensure rollback of the entire transaction
+		log.Printf("%s: %v", errMsg, err)
+		c.Response().Header.Set(appContext.DDH, errMsg+": "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Error creating colony")
+	}
+
+	// Create the new colony
 	newColony := ColonyModel{
 		Name:        colonyName,
-		Owner:       uint32(playerId), // Set the player as the owner
-		AccLevel:    0,                // Default access level
+		Owner:       uint32(playerId),
+		AccLevel:    0,
 		LatestVisit: "DATA.UNVISITED.COLONY",
-		Assets:      make([]int, 0), // Empty assets array
-		Locations:   make([]int, 0), // Empty locations array
+		Assets:      make([]int, 0),
+		Locations:   make([]int, 0),
 	}
 
-	// Save the new colony to the database within the transaction
 	if err := tx.Create(&newColony).Error; err != nil {
-		tx.Rollback()
-		c.Response().Header.Set(appContext.DDH, "Error creating colony: "+err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError, "Error creating colony")
+		return handleError("Error creating colony", err)
 	}
 
-	// Initialize colony paths within the transaction
-	if err := local.InitializeColonyPaths(tx, newColony.ID); err != nil {
-		tx.Rollback()
-		log.Printf("Error initializing colony paths: %v", err)
-		c.Response().Header.Set(appContext.DDH, "Error initializing colony paths: "+err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError, "Error initializing colony")
+	// Insert transforms
+	transformIDs, err := colony.InsertTransforms(appContext, tx)
+	if err != nil {
+		return handleError("Error inserting transforms", err)
 	}
 
-	// Commit the transaction
+	// Insert colony locations
+	if err := colony.InsertColonyLocations(appContext, tx, uint(newColony.ID), transformIDs); err != nil {
+		return handleError("Error inserting colony locations", err)
+	}
+
+	// Initialize colony paths
+	if err := colony.InitializeColonyPaths(tx, newColony.ID); err != nil {
+		return handleError("Error initializing colony paths", err)
+	}
+
+	// Commit the remaining transaction
 	if err := tx.Commit().Error; err != nil {
-		c.Response().Header.Set(appContext.DDH, "Error committing transaction: "+err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError, "Error creating colony")
+		return handleError("Error committing transaction", err)
 	}
 
 	// Return the newly created colony details
