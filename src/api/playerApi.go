@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"log"
+	"otte_main_backend/src/api/local"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/database"
 	"otte_main_backend/src/meta"
@@ -460,7 +461,7 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 		ID          uint32                   `json:"id"`
 		AccLevel    uint32                   `json:"accLevel"`
 		Name        string                   `json:"name"`
-		LatestVisit string                `json:"latestVisit"`
+		LatestVisit string                   `json:"latestVisit"`
 		Assets      []AssetTransformTuple    `json:"assets"`
 		Locations   []LocationTransformTuple `json:"locations"`
 	}{
@@ -499,13 +500,13 @@ func getColonyOverviewHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	}
 
 	type ColonyData struct {
-        ID          uint32  `json:"id"`
-        AccLevel    uint32  `json:"accLevel"`
-        Name        string  `json:"name"`
-        LatestVisit string  `json:"latestVisit"`
-        Assets      []uint32 `json:"assets"`
-        Locations   []uint32 `json:"locations"`
-    }
+		ID          uint32   `json:"id"`
+		AccLevel    uint32   `json:"accLevel"`
+		Name        string   `json:"name"`
+		LatestVisit string   `json:"latestVisit"`
+		Assets      []uint32 `json:"assets"`
+		Locations   []uint32 `json:"locations"`
+	}
 	// Prepare the response with the anonymous struct
 	var colonyResponses = make([]ColonyData, 0, len(colonies))
 	for _, colony := range colonies {
@@ -567,27 +568,56 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		colonyName = "DATA.UNNAMED.COLONY"
 	}
 
+	// Start a transaction
+	tx := appContext.ColonyAssetDB.Begin()
+	if tx.Error != nil {
+		c.Response().Header.Set(appContext.DDH, "Error starting transaction: "+tx.Error.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Error starting transaction")
+	}
+
+	// Defer a rollback in case anything fails
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	// Prepare the new colony with default values
 	newColony := ColonyModel{
 		Name:        colonyName,
 		Owner:       uint32(playerId), // Set the player as the owner
 		AccLevel:    0,                // Default access level
 		LatestVisit: "DATA.UNVISITED.COLONY",
-		Assets:      make([]int, 0),   // Empty assets array
-		Locations:   make([]int, 0),   // Empty locations array
+		Assets:      make([]int, 0), // Empty assets array
+		Locations:   make([]int, 0), // Empty locations array
 	}
 
-	// Save the new colony to the database
-	if err := appContext.ColonyAssetDB.Create(&newColony).Error; err != nil {
-		c.Response().Header.Set(appContext.DDH, "Error creating colony "+err.Error())
+	// Save the new colony to the database within the transaction
+	if err := tx.Create(&newColony).Error; err != nil {
+		tx.Rollback()
+		c.Response().Header.Set(appContext.DDH, "Error creating colony: "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Error creating colony")
+	}
+
+	// Initialize colony paths within the transaction
+	if err := local.InitializeColonyPaths(tx, newColony.ID); err != nil {
+		tx.Rollback()
+		log.Printf("Error initializing colony paths: %v", err)
+		c.Response().Header.Set(appContext.DDH, "Error initializing colony paths: "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Error initializing colony")
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		c.Response().Header.Set(appContext.DDH, "Error committing transaction: "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Error creating colony")
 	}
 
 	// Return the newly created colony details
 	toReturn := struct {
-		ID          uint32    `json:"id"`
-		Name        string    `json:"name"`
-		AccLevel    uint32    `json:"accLevel"`
+		ID          uint32 `json:"id"`
+		Name        string `json:"name"`
+		AccLevel    uint32 `json:"accLevel"`
 		LatestVisit string `json:"latestVisit"`
 	}{
 		ID:          newColony.ID,
