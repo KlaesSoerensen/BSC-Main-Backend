@@ -295,8 +295,9 @@ func getLocationFullInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContex
 		}
 
 		appearances[i] = LocationAppearanceDTO{
-			Level:  uint32(appearance.Level),
-			Assets: assets,
+			Level:     uint32(appearance.Level),
+			SplashArt: appearance.SplashArt,
+			Assets:    assets,
 		}
 	}
 
