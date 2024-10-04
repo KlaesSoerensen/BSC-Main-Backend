@@ -20,9 +20,9 @@ type MinimizedAssetWithTransformDTO struct {
 }
 
 type AssetCollectionResponseDTO struct {
-	ID      uint32                           `json:"id"`
-	Name    string                           `json:"name"`
-	Entries []MinimizedAssetWithTransformDTO `json:"entries"`
+	ID      uint32               `json:"id"`
+	Name    string               `json:"name"`
+	Entries []CollectionEntryDTO `json:"entries"`
 }
 
 func (a *AssetCollectionResponseDTO) TableName() string {
@@ -116,6 +116,11 @@ func getCollectionByIDHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	return c.JSON(transformed)
 }
 
+type CollectionEntryDTO struct {
+	Transform TransformDTO      `json:"transform"`
+	Asset     MinimizedAssetDTO `json:"asset"`
+}
+
 func transformRawResults(rawResults []RawResult) (*AssetCollectionResponseDTO, error) {
 	if len(rawResults) == 0 {
 		return nil, fmt.Errorf("no results to transform")
@@ -124,20 +129,22 @@ func transformRawResults(rawResults []RawResult) (*AssetCollectionResponseDTO, e
 	response := &AssetCollectionResponseDTO{
 		ID:      rawResults[0].AssetCollectionID,
 		Name:    rawResults[0].CollectionName,
-		Entries: []MinimizedAssetWithTransformDTO{},
+		Entries: []CollectionEntryDTO{},
 	}
 
-	entriesMap := make(map[uint32]*MinimizedAssetWithTransformDTO)
+	entriesMap := make(map[uint32]*CollectionEntryDTO)
 
 	for _, raw := range rawResults {
 		entry, exists := entriesMap[raw.CollectionEntryID]
 		if !exists {
-			newEntry := &MinimizedAssetWithTransformDTO{
-				Width:  uint32(raw.Width),
-				Height: uint32(raw.Height),
-				Alias:  raw.Alias,
-				Type:   raw.Type,
-				LODs:   []LODDetailsDTO{},
+			newEntry := &CollectionEntryDTO{
+				Asset: MinimizedAssetDTO{
+					Width:  uint32(raw.Width),
+					Height: uint32(raw.Height),
+					Alias:  raw.Alias,
+					Type:   raw.Type,
+					LODs:   []LODDetailsDTO{},
+				},
 				Transform: TransformDTO{
 					XOffset: raw.XOffset,
 					YOffset: raw.YOffset,
@@ -157,14 +164,14 @@ func transformRawResults(rawResults []RawResult) (*AssetCollectionResponseDTO, e
 		// Add LOD if it's not already present and LODID is not 0
 		if raw.LODID != 0 {
 			lodExists := false
-			for _, lod := range entry.LODs {
+			for _, lod := range entry.Asset.LODs {
 				if lod.ID == raw.LODID {
 					lodExists = true
 					break
 				}
 			}
 			if !lodExists {
-				entry.LODs = append(entry.LODs, LODDetailsDTO{
+				entry.Asset.LODs = append(entry.Asset.LODs, LODDetailsDTO{
 					ID:          raw.LODID,
 					DetailLevel: uint32(raw.DetailLevel),
 				})
