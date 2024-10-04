@@ -32,8 +32,9 @@ type LocationFullInfoResponse struct {
 }
 
 type LocationAppearanceDTO struct {
-	Level  uint32 `json:"level"`
-	Assets []struct {
+	Level     uint32 `json:"level"`
+	SplashArt uint32 `json:"splashArt" gorm:"column:splashArt"`
+	Assets    []struct {
 		Transform TransformLocationDTO      `json:"transform"`
 		Asset     MinimizedAssetLocationDTO `json:"asset"`
 	} `json:"assets"`
@@ -93,6 +94,7 @@ type LocationAppearanceModel struct {
 	ID                uint32               `gorm:"column:id;primaryKey"`
 	Level             int                  `gorm:"column:level"`
 	LocationID        uint32               `gorm:"column:location"`
+	SplashArt         uint32               `json:"splashArt" gorm:"column:splashArt"`
 	AssetCollectionID uint32               `gorm:"column:assetCollection"`
 	AssetCollection   AssetCollectionModel `gorm:"foreignKey:AssetCollectionID"`
 }
@@ -177,7 +179,6 @@ func (mdm *MinigameDifficultyModel) TableName() string {
 }
 
 func getLocationInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-
 	locationID, err := c.ParamsInt("locationID")
 	if err != nil {
 		c.Response().Header.Set(appContext.DDH, "Invalid location ID "+err.Error())
@@ -197,30 +198,28 @@ func getLocationInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) e
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
-	appearances := make([]struct {
+	type LocationAppearanceDTO struct {
 		Level             uint32 `json:"level"`
+		SplashArt         uint32 `json:"splashArt" gorm:"column:splashArt"`
 		AssetCollectionID uint32 `json:"assetCollectionID"`
-	}, len(location.Appearances))
+	}
+
+	appearances := make([]LocationAppearanceDTO, len(location.Appearances))
 
 	for i, appearance := range location.Appearances {
-		appearances[i] = struct {
-			Level             uint32 `json:"level"`
-			AssetCollectionID uint32 `json:"assetCollectionID"`
-		}{
+		appearances[i] = LocationAppearanceDTO{
 			Level:             uint32(appearance.Level),
 			AssetCollectionID: appearance.AssetCollectionID,
+			SplashArt:         appearance.SplashArt,
 		}
 	}
 
 	response := struct {
-		ID          uint32 `json:"id"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Appearances []struct {
-			Level             uint32 `json:"level"`
-			AssetCollectionID uint32 `json:"assetCollectionID"`
-		} `json:"appearances"`
-		MinigameID uint32 `json:"minigameID"`
+		ID          uint32                  `json:"id"`
+		Name        string                  `json:"name"`
+		Description string                  `json:"description"`
+		Appearances []LocationAppearanceDTO `json:"appearances"`
+		MinigameID  uint32                  `json:"minigameID"`
 	}{
 		ID:          location.ID,
 		Name:        location.Name,
