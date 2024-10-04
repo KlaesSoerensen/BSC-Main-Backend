@@ -655,6 +655,16 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		return handleError("Error inserting colony locations", err, true, nil, transformIDs, &newColony)
 	}
 
+	// Update the Locations array in newColony
+	for _, locationID := range locationIDMap {
+		newColony.Locations = append(newColony.Locations, int(locationID))
+	}
+
+	// Update the colony record with the new Locations array
+	if err := tx.Model(&newColony).Update("Locations", newColony.Locations).Error; err != nil {
+		return handleError("Error updating colony locations", err, true, locationIDMap, transformIDs, &newColony)
+	}
+
 	// Commit colony locations to ensure they exist for path insertion
 	if err := tx.Commit().Error; err != nil {
 		return handleError("Error committing colony locations", err, true, locationIDMap, transformIDs, &newColony)
