@@ -37,17 +37,13 @@ func InitializeColonyPaths(tx *gorm.DB, colonyID uint32, locationIDMap map[uint]
 	}
 
 	for _, loc := range paths {
-		// Print the path being processed
-		fmt.Printf("Processing path: LocationA: %v, LocationB: %v\n", loc.LocationA, loc.LocationB)
 
 		// Use the map to get the ColonyLocation ID
 		locationAID, okA := locationIDMap[loc.LocationA]
 		locationBID, okB := locationIDMap[loc.LocationB]
 
 		if !okA || !okB {
-			// Print the missing key and the map for further debugging
-			fmt.Printf("Missing location ID: LocationA: %v, LocationB: %v\n", loc.LocationA, loc.LocationB)
-			return fmt.Errorf("location IDs not found in map")
+			return fmt.Errorf("Missing location ID: LocationA: %v, LocationB: %v\n", loc.LocationA, loc.LocationB)
 		}
 
 		// Insert the path using ColonyLocation IDs
