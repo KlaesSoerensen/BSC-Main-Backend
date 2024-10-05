@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-// This is a direct copy of sync.Map, however that map was untyped.
+// This is a direct copy of sync.Map, however that map did not retain type information (come on Golang...).
 type ConcurrentTypedMap[K comparable, V comparable] struct {
 	mu sync.Mutex
 
