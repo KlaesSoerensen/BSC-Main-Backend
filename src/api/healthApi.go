@@ -4,6 +4,7 @@ import (
 	"log"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
+	"otte_main_backend/src/multiplayer"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,11 +12,13 @@ import (
 )
 
 type ServiceStatus struct {
-	ColonyDBConnection   bool   `json:"colonyDBStatus"`
-	LanguageDBConnection bool   `json:"languageDBStatus"`
-	PlayerDBConnection   bool   `json:"playerDBStatus"`
-	StatusMessage        string `json:"statusMessage"`
-	Timestamp            string `json:"timestamp"`
+	MultiplayerStatus            *multiplayer.HealthCheckResponseDTO `json:"multiplayerStatus"`
+	ColonyDBConnection           bool                                `json:"colonyDBStatus"`
+	LanguageDBConnection         bool                                `json:"languageDBStatus"`
+	PlayerDBConnection           bool                                `json:"playerDBStatus"`
+	MultiplayerBackendConnection bool                                `json:"multiplayerBackendStatus"`
+	StatusMessage                string                              `json:"statusMessage"`
+	Timestamp                    string                              `json:"timestamp"`
 }
 
 func rootHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
@@ -27,8 +30,9 @@ func healthRouteHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 	colonyDBErr := appContext.ColonyAssetDB.Connection(func(tx *gorm.DB) error { return nil })
 	languageDBErr := appContext.LanguageDB.Connection(func(tx *gorm.DB) error { return nil })
 	playerDBErr := appContext.PlayerDB.Connection(func(tx *gorm.DB) error { return nil })
+	mbCheckResp, mbCheckErr := multiplayer.CheckConnection(appContext)
 	var statusMessage string
-	if colonyDBErr != nil || languageDBErr != nil || playerDBErr != nil {
+	if colonyDBErr != nil || languageDBErr != nil || playerDBErr != nil || mbCheckErr != nil {
 		c.Status(fiber.StatusInternalServerError)
 		statusMessage = "Error"
 	} else {
@@ -36,6 +40,7 @@ func healthRouteHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 		statusMessage = "OK"
 	}
 	var status = ServiceStatus{
+		MultiplayerStatus:    mbCheckResp,
 		StatusMessage:        statusMessage,
 		ColonyDBConnection:   colonyDBErr == nil,
 		LanguageDBConnection: languageDBErr == nil,
