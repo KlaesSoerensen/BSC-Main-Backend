@@ -3,6 +3,7 @@ package multiplayer
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"otte_main_backend/src/meta"
 	"time"
@@ -29,7 +30,10 @@ func CreateLobby(ownerID uint32, colonyID uint32, appContext *meta.ApplicationCo
 
 func CheckConnection(appContext *meta.ApplicationContext) (*HealthCheckResponseDTO, error) {
 	url := fmt.Sprintf("%s/health", appContext.MultiplayerServerAddress)
+	log.Println("[delete me] url:", url)
 	resp, err := makeGetRequest[HealthCheckResponseDTO](url)
+	log.Println("[delete me] resp:", resp, "err: ", err)
+
 	if err != nil {
 		return nil, fmt.Errorf("error checking connection: %v", err)
 	}
@@ -52,7 +56,7 @@ func makeGetRequest[T any](url string) (*T, error) {
 		return nil, fmt.Errorf("unexpected status code from multiplayer backend: %d", resp.StatusCode)
 	}
 	var dest T
-	err = json.NewDecoder(resp.Body).Decode(dest)
+	err = json.NewDecoder(resp.Body).Decode(&dest)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing response body: %v", err)
 	}
