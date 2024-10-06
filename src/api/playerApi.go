@@ -212,7 +212,6 @@ func grantPlayerAchievementHandler(c *fiber.Ctx, appContext *meta.ApplicationCon
 }
 
 func GrantPlayerAchievement(db database.PlayerDB, playerId uint32, achievementID uint32) error {
-	log.Println("[delete me], player id: ", playerId, " achievement id: ", achievementID)
 	result := db.Exec(`
         UPDATE "Player"
         SET achievements = ARRAY(SELECT DISTINCT UNNEST(array_append(achievements, ?)))

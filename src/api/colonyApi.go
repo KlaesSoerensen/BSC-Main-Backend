@@ -129,7 +129,7 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 	if req.DurationMS == 0 {
-		req.DurationMS = 300000 // 5 minutes
+		req.DurationMS = 600000 // 10 minutes
 	}
 
 	var colony ColonyApiModel
@@ -144,14 +144,10 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
-	log.Println(colony.ColonyCode)
 	//If a code already exists
 	if colony.ColonyCode != nil {
-		log.Println("Colony code not nil")
-		log.Println("Comparing time ", colony.ColonyCode.CreatedAt.Add(time.Duration(colony.ColonyCode.ValidDurationMS)*time.Millisecond), " with ", time.Now())
 		//And it is still valid
 		if colony.ColonyCode.CreatedAt.Add(time.Duration(colony.ColonyCode.ValidDurationMS) * time.Millisecond).After(time.Now()) {
-			log.Println("Colony code not expired")
 			response := OpenColonyResponse{
 				Code:                     colony.ColonyCode.Value,
 				LobbyID:                  colony.ColonyCode.LobbyID,
@@ -251,7 +247,7 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
-	if colonyCode.CreatedAt.Add(time.Duration(colonyCode.ValidDurationMS) * time.Millisecond).After(time.Now()) {
+	if colonyCode.CreatedAt.Add(time.Duration(colonyCode.ValidDurationMS) * time.Millisecond).Before(time.Now()) {
 		appContext.ColonyAssetDB.Delete(&colonyCode)
 
 		c.Status(fiber.StatusNotFound)
@@ -265,8 +261,7 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		MultiplayerServerAddress: colonyCode.ServerAddress,
 		ColonyID:                 colonyCode.ColonyID,
 	}
-
-	log.Printf("Successfully joined colony with code: %s", code)
+	c.Status(fiber.StatusOK)
 	return c.JSON(response)
 }
 

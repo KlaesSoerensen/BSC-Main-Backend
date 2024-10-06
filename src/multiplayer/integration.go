@@ -3,7 +3,6 @@ package multiplayer
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"otte_main_backend/src/meta"
 	"time"
@@ -30,9 +29,7 @@ func CreateLobby(ownerID uint32, colonyID uint32, appContext *meta.ApplicationCo
 
 func CheckConnection(appContext *meta.ApplicationContext) (*HealthCheckResponseDTO, error) {
 	url := fmt.Sprintf("%s/health", appContext.MultiplayerServerAddress)
-	log.Println("[delete me] url:", url)
 	resp, err := makeGetRequest[HealthCheckResponseDTO](url)
-	log.Println("[delete me] resp:", resp, "err: ", err)
 
 	if err != nil {
 		return nil, fmt.Errorf("error checking connection: %v", err)
