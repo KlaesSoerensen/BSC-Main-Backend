@@ -82,6 +82,7 @@ type JoinColonyResponse struct {
 	LobbyID                  uint32 `json:"lobbyId"`
 	MultiplayerServerAddress string `json:"multiplayerServerAddress"`
 	Owner                    uint32 `json:"owner"`
+	ColonyID                 uint32 `json:"colonyId"`
 }
 
 // ColonyApiModel represents the Colony table for Colony API operations
@@ -262,6 +263,7 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		Owner:                    colonyCode.OwnerID,
 		LobbyID:                  colonyCode.LobbyID,
 		MultiplayerServerAddress: colonyCode.ServerAddress,
+		ColonyID:                 colonyCode.ColonyID,
 	}
 
 	log.Printf("Successfully joined colony with code: %s", code)
