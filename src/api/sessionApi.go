@@ -67,7 +67,6 @@ func initiateSessionHandler(c *fiber.Ctx, appContext *meta.ApplicationContext, a
 			middleware.LogRequests(c)
 			return fiber.NewError(fiber.StatusInternalServerError, "Something went wrong when trying to lookup the user")
 		}
-		log.Println("[delete me] player lookup, player not found")
 		//If the player doesn't exist, check with Vitec
 		if crossVerificationError := appContext.VitecIntegration.VerifyUser(&body); crossVerificationError != nil {
 			c.Status(fiber.StatusUnauthorized)
