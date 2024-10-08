@@ -15,6 +15,7 @@ type CreateLobbyResponseDTO struct {
 type HealthCheckResponseDTO struct {
 	Status     bool   `json:"status"`
 	LobbyCount uint32 `json:"lobbyCount"`
+	Message    string `json:"message"`
 }
 
 // Returns lobbyID, error
@@ -27,14 +28,18 @@ func CreateLobby(ownerID uint32, colonyID uint32, appContext *meta.ApplicationCo
 	return body.ID, nil
 }
 
-func CheckConnection(appContext *meta.ApplicationContext) (*HealthCheckResponseDTO, error) {
+func CheckConnection(appContext *meta.ApplicationContext) *HealthCheckResponseDTO {
 	url := fmt.Sprintf("%s/health", appContext.MultiplayerServerAddress)
 	resp, err := makeGetRequest[HealthCheckResponseDTO](url)
 
 	if err != nil {
-		return nil, fmt.Errorf("error checking connection: %v", err)
+		return &HealthCheckResponseDTO{
+			Status:     false,
+			LobbyCount: 0,
+			Message:    fmt.Sprintf("Error checking connection: %s", err.Error()),
+		}
 	}
-	return resp, nil
+	return resp
 }
 
 func makeGetRequest[T any](url string) (*T, error) {

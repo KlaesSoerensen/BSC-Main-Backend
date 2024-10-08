@@ -30,15 +30,16 @@ func healthRouteHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 	colonyDBErr := appContext.ColonyAssetDB.Connection(func(tx *gorm.DB) error { return nil })
 	languageDBErr := appContext.LanguageDB.Connection(func(tx *gorm.DB) error { return nil })
 	playerDBErr := appContext.PlayerDB.Connection(func(tx *gorm.DB) error { return nil })
-	mbCheckResp, mbCheckErr := multiplayer.CheckConnection(appContext)
+	mbCheckResp := multiplayer.CheckConnection(appContext)
 	var statusMessage string
-	if colonyDBErr != nil || languageDBErr != nil || playerDBErr != nil || mbCheckErr != nil {
+	if colonyDBErr != nil || languageDBErr != nil || playerDBErr != nil {
 		c.Status(fiber.StatusInternalServerError)
-		statusMessage = "Error"
+		statusMessage = "Database Connection Error"
 	} else {
 		c.Status(fiber.StatusOK)
 		statusMessage = "OK"
 	}
+
 	var status = ServiceStatus{
 		MultiplayerStatus:    mbCheckResp,
 		StatusMessage:        statusMessage,
