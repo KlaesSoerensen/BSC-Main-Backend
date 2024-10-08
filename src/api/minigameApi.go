@@ -22,6 +22,7 @@ type MinigameDifficultyDTO struct {
 	MinigameID          uint32 `json:"-" gorm:"column:minigame"`
 	Icon                uint32 `json:"icon"`
 	Description         string `json:"description"`
+	RequiredLevel       uint32 `json:"requiredLevel" gorm:"column:requiredLevel"`
 	OverwritingSettings string `json:"overwritingSettings" gorm:"column:overwritingSettings"`
 }
 
