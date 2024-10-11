@@ -19,20 +19,31 @@ func (Transform) TableName() string {
 	return "Transform"
 }
 
+func createTransform(xScale float64, yScale float64, xOffset float64, yOffset float64, zIndex int) Transform {
+	topLevelScaleScalar := .75
+	topLevelDistanceScalar := float64(2)
+	return Transform{
+		XScale:  xScale * topLevelScaleScalar,
+		YScale:  yScale * topLevelScaleScalar,
+		XOffset: xOffset * topLevelDistanceScalar,
+		YOffset: yOffset * topLevelDistanceScalar,
+		ZIndex:  zIndex,
+	}
+}
+
 func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[string]uint, error) {
-	topLevelLocationScalar := .75
 	transforms := []Transform{
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 400, YOffset: 400, ZIndex: 100},  // Town Hall
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 250, YOffset: 300, ZIndex: 100},  // Cantina
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 100, YOffset: 400, ZIndex: 100},  // Home
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 400, YOffset: 200, ZIndex: 100},  // Aquifer Plant
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 400, YOffset: 600, ZIndex: 100},  // Shield Generator
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 700, YOffset: 400, ZIndex: 100},  // Vehicle Storage
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 1000, YOffset: 300, ZIndex: 100}, // Radar Dish
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 1000, YOffset: 500, ZIndex: 100}, // Mining Facility
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 1300, YOffset: 300, ZIndex: 100}, // Outer Walls
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 1300, YOffset: 500, ZIndex: 100}, // Space Port
-		{XScale: 1 * topLevelLocationScalar, YScale: 1 * topLevelLocationScalar, XOffset: 400, YOffset: 0, ZIndex: 100},    // Agriculture Center
+		createTransform(1, 1, 400, 400, 100),  // Town Hall
+		createTransform(1, 1, 250, 300, 100),  // Cantina
+		createTransform(1, 1, 100, 400, 100),  // Home
+		createTransform(1, 1, 400, 200, 100),  // Aquifer Plant
+		createTransform(1, 1, 400, 600, 100),  // Shield Generator
+		createTransform(1, 1, 700, 400, 100),  // Vehicle Storage
+		createTransform(1, 1, 1000, 300, 100), // Radar Dish
+		createTransform(1, 1, 1000, 500, 100), // Mining Facility
+		createTransform(1, 1, 1300, 300, 100), // Outer Walls
+		createTransform(1, 1, 1300, 500, 100), // Space Port
+		createTransform(1, 1, 400, 0, 100),    // Agriculture Center
 	}
 
 	transformIDs := make(map[string]uint)
