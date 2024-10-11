@@ -338,6 +338,17 @@ func (a *ColonyLocationModel) TableName() string {
 	return "ColonyLocation"
 }
 
+type LocationTransformTuple struct {
+	Transform  TransformDTO `json:"transform"`
+	ID         uint32       `json:"id"`
+	LocationID uint32       `json:"locationID" gorm:"foreignKey:Location;references:ID;"`
+	Level      uint32       `json:"level"`
+}
+type AssetTransformTuple struct {
+	Transform         TransformDTO `json:"transform"`
+	AssetCollectionID uint32       `json:"assetCollectionID"`
+}
+
 // Handler for fetching colony info by playerId and colonyId
 func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
 	playerId, playerIdErr := c.ParamsInt("playerId")
@@ -367,10 +378,6 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
-	type AssetTransformTuple struct {
-		Transform         TransformDTO `json:"transform"`
-		AssetCollectionID uint32       `json:"assetCollectionID"`
-	}
 	colonyAssets := make([]AssetTransformTuple, 0, len(colony.Assets))
 	for _, colonyAssetID := range colony.Assets {
 		var transform TransformDTO
@@ -411,13 +418,6 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 			AssetCollectionID: assetCollection.ID,
 		})
 
-	}
-
-	type LocationTransformTuple struct {
-		Transform  TransformDTO `json:"transform"`
-		ID         uint32       `json:"id"`
-		LocationID uint32       `json:"locationID" gorm:"foreignKey:Location;references:ID;"`
-		Level      uint32       `json:"level"`
 	}
 
 	colonyLocations := make([]LocationTransformTuple, 0, len(colony.Locations))
