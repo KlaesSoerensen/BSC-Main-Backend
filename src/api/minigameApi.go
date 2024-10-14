@@ -48,7 +48,9 @@ func applyMinigameApi(app *fiber.App, appContext *meta.ApplicationContext) error
 
 	//Fiber is so stateful that it infers "minimized" as a query param if registered after minigames/:id
 	//y
-	app.Get("/api/v1/minigame/minimized", auth.PrefixOn(appContext, getMinimizedMinigameHandler))
+	app.Get("/api/v1/minigame/minimized", func(c *fiber.Ctx) error {
+		return getMinimizedMinigameHandler(c, appContext)
+	})
 
 	app.Get("/api/v1/minigame/:id", auth.PrefixOn(appContext, getMinigameInfoHandler))
 
