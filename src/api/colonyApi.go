@@ -23,6 +23,8 @@ func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
 
+	app.Post("/api/v1/colony/:colonyId/close", auth.PrefixOn(appContext, closeColonyHandler))
+
 	app.Post("/api/v1/colony/join/:code", auth.PrefixOn(appContext, joinColonyHandler))
 
 	app.Post("/api/v1/colony/:colonyId/update-last-visit", auth.PrefixOn(appContext, updateLatestVisitHandler))
@@ -313,4 +315,38 @@ func updateLatestVisitHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	}
 
 	return c.JSON(response)
+}
+
+func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	colonyID, err := c.ParamsInt("colonyId")
+	if err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid colony ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
+	}
+
+	// Get the player ID from the authenticated user
+	playerID := c.Locals("playerId").(uint32)
+
+	// Find the colony and check if the player is the owner
+	var colony ColonyApiModel
+	if err := appContext.ColonyAssetDB.
+		Where("id = ? AND owner = ?", colonyID, playerID).
+		First(&colony).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Colony not found or not owned by player "+err.Error())
+			return fiber.NewError(fiber.StatusNotFound, "Colony not found or not owned by player")
+		}
+		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	// Delete the ColonyCode entry
+	if err := appContext.ColonyAssetDB.
+		Where("colony = ?", colonyID).
+		Delete(&ColonyCodeModel{}).Error; err != nil {
+		c.Response().Header.Set(appContext.DDH, "Failed to delete ColonyCode "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete ColonyCode")
+	}
+
+	return c.SendStatus(fiber.StatusOK)
 }
