@@ -317,6 +317,10 @@ func updateLatestVisitHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 	return c.JSON(response)
 }
 
+type CloseColonyRequest struct {
+	PlayerID uint32 `json:"playerId"`
+}
+
 func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
 	colonyID, err := c.ParamsInt("colonyId")
 	if err != nil {
@@ -324,13 +328,16 @@ func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
 	}
 
-	// Get the player ID from the authenticated user
-	playerID := c.Locals("playerId").(uint32)
+	var req CloseColonyRequest
+	if err := c.BodyParser(&req); err != nil || req.PlayerID == 0 {
+		c.Response().Header.Set(appContext.DDH, "Invalid request body "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
 
 	// Find the colony and check if the player is the owner
 	var colony ColonyApiModel
 	if err := appContext.ColonyAssetDB.
-		Where("id = ? AND owner = ?", colonyID, playerID).
+		Where("id = ? AND owner = ?", colonyID, req.PlayerID).
 		First(&colony).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Response().Header.Set(appContext.DDH, "Colony not found or not owned by player "+err.Error())
