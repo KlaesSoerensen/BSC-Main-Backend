@@ -8,12 +8,13 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 type MinimizedMinigameDTO struct {
-	Settings            string `json:"settings"`
-	OverwritingSettings string `json:"overwritingSettings" gorm:"column:overwritingSettings"`
+	Settings            datatypes.JSON `json:"settings"`
+	OverwritingSettings datatypes.JSON `json:"overwritingSettings" gorm:"column:overwritingSettings"`
 }
 
 type MinigameDifficultyDTO struct {
@@ -89,7 +90,7 @@ func getMinimizedMinigameHandler(c *fiber.Ctx, appContext *meta.ApplicationConte
 		return fiber.NewError(fiber.StatusInternalServerError, "Error in fetching minigame "+err.Error())
 	}
 
-	if minigame.Settings == "" || minigame.OverwritingSettings == "" {
+	if minigame.Settings == nil || minigame.OverwritingSettings == nil {
 		c.Response().Header.Set(appContext.DDH, "No such minigame or minigame difficulty")
 		return fiber.NewError(fiber.StatusNotFound, "No such minigame or minigame difficulty")
 	}
