@@ -154,7 +154,7 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 	colony.LatestVisit = req.LatestVisit
 	colony.ColonyCode = &ColonyCodeModel{
 		LobbyID:         lobbyID,
-		ServerAddress:   appContext.MultiplayerServerAddress,
+		ServerAddress:   appContext.ExternalMultiplayerServerAddress,
 		ColonyID:        colony.ID,
 		OwnerID:         req.PlayerID,
 		ValidDurationMS: req.DurationMS,

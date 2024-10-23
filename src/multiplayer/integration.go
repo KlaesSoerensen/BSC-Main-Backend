@@ -20,7 +20,7 @@ type HealthCheckResponseDTO struct {
 
 // Returns lobbyID, error
 func CreateLobby(ownerID uint32, colonyID uint32, appContext *meta.ApplicationContext) (uint32, error) {
-	url := fmt.Sprintf("%s/create-lobby?ownerID=%d&encoding=binary&colonyID=%d", appContext.MultiplayerServerAddress, ownerID, colonyID)
+	url := fmt.Sprintf("%s/create-lobby?ownerID=%d&encoding=binary&colonyID=%d", appContext.InternalMultiplayerServerAddress, ownerID, colonyID)
 	body, err := makeEmptyPostRequest(url)
 	if err != nil {
 		return 0, fmt.Errorf("error creating lobby: %v", err)
@@ -29,7 +29,7 @@ func CreateLobby(ownerID uint32, colonyID uint32, appContext *meta.ApplicationCo
 }
 
 func CheckConnection(appContext *meta.ApplicationContext) *HealthCheckResponseDTO {
-	url := fmt.Sprintf("%s/health", appContext.MultiplayerServerAddress)
+	url := fmt.Sprintf("%s/health", appContext.InternalMultiplayerServerAddress)
 	resp, err := makeGetRequest[HealthCheckResponseDTO](url)
 
 	if err != nil {
