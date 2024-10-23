@@ -9,6 +9,7 @@ import (
 	"otte_main_backend/src/meta"
 	"otte_main_backend/src/multiplayer"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -172,7 +173,13 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 			c.Response().Header.Set(appContext.DDH, "Failed to generate secure random number "+err.Error())
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate colony code")
 		}
-		colony.ColonyCode.Value = fmt.Sprintf("%06d", n.Int64())
+		asString := fmt.Sprintf("%06d", n.Int64())
+		backToInt, _ := strconv.Atoi(asString)
+		if backToInt < 100000 { // limiting range to 100000-999999
+			backToInt += 100000
+		}
+
+		colony.ColonyCode.Value = fmt.Sprintf("%d", backToInt)
 
 		tx := appContext.ColonyAssetDB.Begin()
 		if err := tx.Error; err != nil {
