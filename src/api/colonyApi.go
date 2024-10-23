@@ -245,18 +245,20 @@ func joinColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony code format")
 	}
 
-	var colonyCode ColonyCodeModel
+	var colonyCodes []ColonyCodeModel
 	if err := appContext.ColonyAssetDB.
 		Where("value = ?", code).
-		First(&colonyCode).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.Response().Header.Set(appContext.DDH, "Colony code not found: "+code)
-			return fiber.NewError(fiber.StatusNotFound, "Colony code not found")
-		}
+		Find(&colonyCodes).Error; err != nil {
 		c.Response().Header.Set(appContext.DDH, "Database error: "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
+	if len(colonyCodes) == 0 {
+		c.Response().Header.Set(appContext.DDH, "Colony code not found: "+code)
+		return fiber.NewError(fiber.StatusNotFound, "Colony code not found")
+	}
+
+	colonyCode := colonyCodes[0]
 	if colonyCode.CreatedAt.Add(time.Duration(colonyCode.ValidDurationMS) * time.Millisecond).Before(time.Now()) {
 		appContext.ColonyAssetDB.Delete(&colonyCode)
 		c.Response().Header.Set(appContext.DDH, "Code expired")
