@@ -19,7 +19,9 @@ import (
 func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	app.Get("/api/v1/colony/:colonyId/pathgraph", auth.PrefixOn(appContext, getPathGraphHandler))
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
-	app.Post("/api/v1/colony/:colonyId/close", auth.PrefixOn(appContext, closeColonyHandler))
+	app.Post("/api/v1/colony/:colonyId/close", func(c *fiber.Ctx) error {
+		return closeColonyHandler(c, appContext)
+	})
 	app.Post("/api/v1/colony/join/:code", auth.PrefixOn(appContext, joinColonyHandler))
 	app.Post("/api/v1/colony/:colonyId/update-last-visit", auth.PrefixOn(appContext, updateLatestVisitHandler))
 	return nil
