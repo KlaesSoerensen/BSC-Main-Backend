@@ -18,6 +18,7 @@ import (
 
 func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	app.Get("/api/v1/colony/:colonyId/pathgraph", auth.PrefixOn(appContext, getPathGraphHandler))
+	app.Get("/api/v1/colony/:colonyId/code", auth.PrefixOn(appContext, getColonyCodeHandler))
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
 	app.Post("/api/v1/colony/:colonyId/close", func(c *fiber.Ctx) error {
 		return closeColonyHandler(c, appContext)
@@ -374,4 +375,62 @@ func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 	}
 
 	return c.SendStatus(fiber.StatusOK)
+}
+
+func getColonyCodeHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
+	colonyID, err := c.ParamsInt("colonyId")
+	if err != nil {
+		c.Response().Header.Set(appContext.DDH, "Invalid colony ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
+	}
+
+	// First get the colony to find its colonyCode ID
+	var colony struct {
+		ID         uint32 `gorm:"column:id"`
+		ColonyCode uint32 `gorm:"column:colonyCode"`
+	}
+	if err := appContext.ColonyAssetDB.
+		Table("Colony").
+		Select("id, \"colonyCode\"").
+		Where("id = ?", colonyID).
+		First(&colony).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Colony not found "+err.Error())
+			return fiber.NewError(fiber.StatusNotFound, "Colony not found")
+		}
+		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	if colony.ColonyCode == 0 {
+		c.Response().Header.Set(appContext.DDH, "No active colony code found")
+		return fiber.NewError(fiber.StatusNotFound, "No active colony code found")
+	}
+
+	// Now get the actual colony code using the ID from Colony table
+	var colonyCode ColonyCodeModel
+	if err := appContext.ColonyAssetDB.
+		Table("ColonyCode").
+		Where("id = ?", colony.ColonyCode).
+		First(&colonyCode).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(appContext.DDH, "Colony code not found "+err.Error())
+			return fiber.NewError(fiber.StatusNotFound, "Colony code not found")
+		}
+		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	// Check if the code has expired
+	if colonyCode.CreatedAt.Add(time.Duration(colonyCode.ValidDurationMS) * time.Millisecond).Before(time.Now()) {
+		c.Response().Header.Set(appContext.DDH, "Colony code has expired")
+		return fiber.NewError(fiber.StatusNotFound, "Colony code has expired")
+	}
+
+	response := OpenColonyResponse{
+		Code: colonyCode.Value,
+	}
+
+	c.Status(fiber.StatusOK)
+	return c.JSON(response)
 }
