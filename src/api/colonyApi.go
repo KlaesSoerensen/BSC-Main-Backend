@@ -79,7 +79,7 @@ type JoinColonyResponse struct {
 	ColonyID                 uint32 `json:"colonyId"`
 }
 
-type ColonyApiModel struct {
+type ColonyDTO struct {
 	ID          uint32           `gorm:"column:id;primaryKey"`
 	Name        string           `gorm:"column:name"`
 	AccLevel    int              `gorm:"column:accLevel"`
@@ -88,7 +88,7 @@ type ColonyApiModel struct {
 	ColonyCode  *ColonyCodeModel `gorm:"foreignKey:ColonyID"`
 }
 
-func (ColonyApiModel) TableName() string {
+func (ColonyDTO) TableName() string {
 	return "Colony"
 }
 
@@ -123,7 +123,7 @@ func openColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error 
 		req.DurationMS = 600000
 	}
 
-	var colony ColonyApiModel
+	var colony ColonyDTO
 	if err := appContext.ColonyAssetDB.
 		Preload("ColonyCode").
 		Where("id = ? AND owner = ?", colonyID, req.PlayerID).
@@ -296,7 +296,7 @@ func updateLatestVisitHandler(c *fiber.Ctx, appContext *meta.ApplicationContext)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
-	var colony ColonyApiModel
+	var colony ColonyDTO
 	if err := appContext.ColonyAssetDB.
 		Where("id = ?", colonyID).
 		First(&colony).Error; err != nil {
@@ -344,7 +344,7 @@ func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
 	}
 
-	var colony ColonyApiModel
+	var colony ColonyDTO
 	if err := tx.Where("id = ? AND owner = ?", colonyID, req.PlayerID).First(&colony).Error; err != nil {
 		tx.Rollback()
 		if errors.Is(err, gorm.ErrRecordNotFound) {
