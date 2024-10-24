@@ -334,8 +334,12 @@ func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 	}
 
 	var req CloseColonyRequest
-	if err := c.BodyParser(&req); err != nil || req.PlayerID == 0 {
+	if err := c.BodyParser(&req); err != nil {
 		c.Response().Header.Set(appContext.DDH, "Invalid request body "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	if req.PlayerID == 0 {
+		c.Response().Header.Set(appContext.DDH, "Invalid request body: Player ID is 0")
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
