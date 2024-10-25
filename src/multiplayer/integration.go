@@ -18,6 +18,26 @@ type HealthCheckResponseDTO struct {
 	Message    string `json:"message"`
 }
 
+type ClientStateResponseDTO struct {
+	LastKnownPosition uint32 `json:"lastKnownPosition"`
+	MsOfLastMessage   uint64 `json:"msOfLastMessage"`
+}
+
+type ClientResponseDTO struct {
+	ID    uint32                 `json:"id"`
+	IGN   string                 `json:"IGN"`
+	Type  string                 `json:"type"`
+	State ClientStateResponseDTO `json:"state"`
+}
+
+type LobbyStateResponseDTO struct {
+	ColonyID uint32              `json:"colonyID"`
+	Closing  bool                `json:"closing"`
+	Phase    uint32              `json:"phase"`
+	Encoding string              `json:"encoding"`
+	Clients  []ClientResponseDTO `json:"clients"`
+}
+
 // Returns lobbyID, error
 func CreateLobby(ownerID uint32, colonyID uint32, appContext *meta.ApplicationContext) (uint32, error) {
 	url := fmt.Sprintf("%s/create-lobby?ownerID=%d&encoding=binary&colonyID=%d", appContext.InternalMultiplayerServerAddress, ownerID, colonyID)
@@ -40,6 +60,15 @@ func CheckConnection(appContext *meta.ApplicationContext) *HealthCheckResponseDT
 		}
 	}
 	return resp
+}
+
+func GetLobbyState(lobbyID uint32, appContext *meta.ApplicationContext) (*LobbyStateResponseDTO, error) {
+	url := fmt.Sprintf("%s/lobby/%d", appContext.InternalMultiplayerServerAddress, lobbyID)
+	resp, err := makeGetRequest[LobbyStateResponseDTO](url)
+	if err != nil {
+		return nil, fmt.Errorf("error getting lobby state: %v", err)
+	}
+	return resp, nil
 }
 
 func makeGetRequest[T any](url string) (*T, error) {

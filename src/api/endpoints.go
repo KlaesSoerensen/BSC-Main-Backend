@@ -1,6 +1,7 @@
 package api
 
 import (
+	"otte_main_backend/src/api/proxy"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
 
@@ -39,6 +40,9 @@ func ApplyEndpoints(app *fiber.App, appContext *meta.ApplicationContext, authSer
 		return err
 	}
 	if err := applySessionApi(app, appContext, authService); err != nil {
+		return err
+	}
+	if err := proxy.ApplyProxyAPI(app, appContext); err != nil {
 		return err
 	}
 	return nil
