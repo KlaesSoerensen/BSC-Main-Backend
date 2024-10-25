@@ -76,7 +76,9 @@ func GetSessionByReferenceID(referenceID string, appContext *meta.ApplicationCon
 //
 // if the auth check fails, it assures the handler isn't run
 //
-// Also sets debug header and status code on auth error
+// # Also sets debug header and status code on auth error
+//
+// Also also adds request logging
 func PrefixOn(appContext *meta.ApplicationContext, existingHandler func(c *fiber.Ctx, appContext *meta.ApplicationContext) error) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		if err := authSingleton.Method(c); err != nil {
