@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
+	"otte_main_backend/src/middleware"
 	"otte_main_backend/src/multiplayer"
 	"regexp"
 	"strconv"
@@ -330,22 +331,30 @@ func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 	colonyID, err := c.ParamsInt("colonyId")
 	if err != nil {
 		c.Response().Header.Set(appContext.DDH, "Invalid colony ID "+err.Error())
+		c.Status(fiber.StatusBadRequest)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
 	}
 
 	var req CloseColonyRequest
 	if err := c.BodyParser(&req); err != nil {
 		c.Response().Header.Set(appContext.DDH, "Invalid request body "+err.Error())
+		c.Status(fiber.StatusBadRequest)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 	if req.PlayerID == 0 {
 		c.Response().Header.Set(appContext.DDH, "Invalid request body: Player ID is 0")
+		c.Status(fiber.StatusBadRequest)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
 	tx := appContext.ColonyAssetDB.Begin()
 	if err := tx.Error; err != nil {
 		c.Response().Header.Set(appContext.DDH, "Failed to begin transaction "+err.Error())
+		c.Status(fiber.StatusInternalServerError)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to begin transaction")
 	}
 
@@ -354,8 +363,12 @@ func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 		tx.Rollback()
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Response().Header.Set(appContext.DDH, "Colony not found or not owned by player "+err.Error())
+			c.Status(fiber.StatusNotFound)
+			middleware.LogRequests(c)
 			return fiber.NewError(fiber.StatusNotFound, "Colony not found or not owned by player")
 		}
+		c.Status(fiber.StatusInternalServerError)
+		middleware.LogRequests(c)
 		c.Response().Header.Set(appContext.DDH, "Internal server error "+err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
@@ -363,21 +376,29 @@ func closeColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error
 	if err := tx.Model(&colony).Update("colonyCode", nil).Error; err != nil {
 		tx.Rollback()
 		c.Response().Header.Set(appContext.DDH, "Failed to update Colony colonyCode "+err.Error())
+		c.Status(fiber.StatusInternalServerError)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update Colony")
 	}
 
 	if err := tx.Where("colony = ?", colonyID).Delete(&ColonyCodeModel{}).Error; err != nil {
 		tx.Rollback()
 		c.Response().Header.Set(appContext.DDH, "Failed to delete ColonyCode "+err.Error())
+		c.Status(fiber.StatusInternalServerError)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to delete ColonyCode")
 	}
 
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
 		c.Response().Header.Set(appContext.DDH, "Failed to commit transaction "+err.Error())
+		c.Status(fiber.StatusInternalServerError)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction")
 	}
 
+	c.Status(fiber.StatusOK)
+	middleware.LogRequests(c)
 	return c.SendStatus(fiber.StatusOK)
 }
 

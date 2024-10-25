@@ -5,6 +5,7 @@ import (
 	"log"
 	"otte_main_backend/src/auth"
 	"otte_main_backend/src/meta"
+	"otte_main_backend/src/middleware"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -64,11 +65,15 @@ func getMinimizedMinigameHandler(c *fiber.Ctx, appContext *meta.ApplicationConte
 	minigameID, idParseErr := strconv.Atoi(idStr)
 	if idParseErr != nil {
 		c.Response().Header.Set(appContext.DDH, "Error in parsing minigame id "+idParseErr.Error())
+		c.Status(fiber.StatusBadRequest)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Error in parsing minigame id "+idParseErr.Error())
 	}
 	diffID, diffParseErr := strconv.Atoi(diffStr)
 	if diffParseErr != nil {
 		c.Response().Header.Set(appContext.DDH, "Error in parsing minigame difficulty "+diffParseErr.Error())
+		c.Status(fiber.StatusBadRequest)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Error in parsing minigame difficulty "+diffParseErr.Error())
 	}
 
@@ -83,19 +88,26 @@ func getMinimizedMinigameHandler(c *fiber.Ctx, appContext *meta.ApplicationConte
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Response().Header.Set(appContext.DDH, "No such minigame or difficulty")
+			c.Status(fiber.StatusNotFound)
+			middleware.LogRequests(c)
 			return fiber.NewError(fiber.StatusNotFound, "No such minigame or difficulty")
 		}
 
 		c.Response().Header.Set(appContext.DDH, "Error in fetching minigame "+err.Error())
+		c.Status(fiber.StatusInternalServerError)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusInternalServerError, "Error in fetching minigame "+err.Error())
 	}
 
 	if minigame.Settings == nil || minigame.OverwritingSettings == nil {
 		c.Response().Header.Set(appContext.DDH, "No such minigame or minigame difficulty")
+		c.Status(fiber.StatusNotFound)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusNotFound, "No such minigame or minigame difficulty")
 	}
 
 	c.Status(fiber.StatusOK)
+	middleware.LogRequests(c)
 	return c.JSON(minigame)
 }
 
