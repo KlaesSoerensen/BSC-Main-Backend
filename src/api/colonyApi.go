@@ -18,6 +18,7 @@ import (
 )
 
 func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
+	app.Post("/api/v1/colony/:colonyId/location/:colonyLocationId/upgrade", auth.PrefixOn(appContext, upgradeColonyLocationHandler))
 	app.Get("/api/v1/colony/:colonyId/pathgraph", auth.PrefixOn(appContext, getPathGraphHandler))
 	app.Get("/api/v1/colony/:colonyId/code", auth.PrefixOn(appContext, getColonyCodeHandler))
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
@@ -27,6 +28,42 @@ func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
 	app.Post("/api/v1/colony/join/:code", auth.PrefixOn(appContext, joinColonyHandler))
 	app.Post("/api/v1/colony/:colonyId/update-last-visit", auth.PrefixOn(appContext, updateLatestVisitHandler))
 	return nil
+}
+
+func upgradeColonyLocationHandler(c *fiber.Ctx, context *meta.ApplicationContext) error {
+	colonyID, err := c.ParamsInt("colonyId")
+	if err != nil {
+		c.Response().Header.Set(context.DDH, "Invalid colony ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
+	}
+	colonyLocationID, err := c.ParamsInt("colonyLocationId")
+	if err != nil {
+		c.Response().Header.Set(context.DDH, "Invalid colony location ID "+err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony location ID")
+	}
+
+	var toReturn = struct {
+		Level int `json:"level" gorm:"column:level"`
+		ID    int `json:"id" gorm:"column:id"`
+	}{}
+
+	//Increment "level" of ColonyLocation with ID colonyLocationID
+	if err := context.ColonyAssetDB.Model(&ColonyLocationModel{}).
+		Where("id = ? AND colony = ?", colonyLocationID, colonyID).
+		Update("level", gorm.Expr("level + 1")).
+		Select("level", "id").First(&toReturn).Error; err != nil {
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Response().Header.Set(context.DDH, "ColonyLocation not found")
+			return fiber.NewError(fiber.StatusNotFound, "ColonyLocation not found")
+		}
+
+		c.Response().Header.Set(context.DDH, "Internal server error "+err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
+
+	c.Status(fiber.StatusOK)
+	return c.JSON(toReturn)
 }
 
 type PathDTO struct {
