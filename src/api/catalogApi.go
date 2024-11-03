@@ -13,11 +13,11 @@ import (
 
 type InternationalizationCatalogue = map[string]string
 type AvailableLanguageModel struct {
-	ID         uint32 `json:"id" gorm:"column:id;primaryKey"`
-	Coverage   uint32 `json:"coverage" gorm:"column:coverage"`
-	CommonName string `json:"commonName" gorm:"column:commonName"`
-	Code       string `json:"code" gorm:"column:code"`
-	Icon       uint32 `json:"icon" gorm:"column:icon"`
+	ID         uint32  `json:"id" gorm:"column:id;primaryKey"`
+	Coverage   float32 `json:"coverage" gorm:"column:coverage"`
+	CommonName string  `json:"commonName" gorm:"column:commonName"`
+	Code       string  `json:"code" gorm:"column:code"`
+	Icon       uint32  `json:"icon" gorm:"column:icon"`
 }
 
 func (a *AvailableLanguageModel) TableName() string {
@@ -25,10 +25,10 @@ func (a *AvailableLanguageModel) TableName() string {
 }
 
 type AvailableLanguageDTO struct {
-	Coverage   uint32 `json:"coverage" gorm:"column:coverage"`
-	CommonName string `json:"commonName" gorm:"column:commonName"`
-	Code       string `json:"code" gorm:"column:code"`
-	Icon       uint32 `json:"icon" gorm:"column:icon"`
+	Coverage   float32 `json:"coverage" gorm:"column:coverage"`
+	CommonName string  `json:"commonName" gorm:"column:commonName"`
+	Code       string  `json:"code" gorm:"column:code"`
+	Icon       uint32  `json:"icon" gorm:"column:icon"`
 }
 
 func (a *AvailableLanguageDTO) TableName() string {
@@ -36,7 +36,7 @@ func (a *AvailableLanguageDTO) TableName() string {
 }
 
 type AvailableLanguagesResponseDTO struct {
-	Languages []AvailableLanguageDTO `json:"languages"`
+	Languages []AvailableLanguageModel `json:"languages"`
 }
 
 type CatalogueEntry struct {
@@ -55,7 +55,7 @@ func applyCatalog(app *fiber.App, appContext *meta.ApplicationContext) error {
 }
 
 func getAvailableLanguagesHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) error {
-	var data []AvailableLanguageDTO
+	var data []AvailableLanguageModel
 	if dbErr := appContext.LanguageDB.Find(&data).Error; dbErr != nil {
 		c.Response().Header.Set(appContext.DDH, "Internal error")
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal error")
