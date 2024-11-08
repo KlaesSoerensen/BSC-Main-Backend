@@ -18,7 +18,9 @@ import (
 )
 
 func applyColonyApi(app *fiber.App, appContext *meta.ApplicationContext) error {
-	app.Post("/api/v1/colony/:colonyId/location/:colonyLocationId/upgrade", auth.PrefixOn(appContext, upgradeColonyLocationHandler))
+	app.Post("/api/v1/colony/:colonyId/location/:colonyLocationId/upgrade", func(c *fiber.Ctx) error {
+		return upgradeColonyLocationHandler(c, appContext)
+	})
 	app.Get("/api/v1/colony/:colonyId/pathgraph", auth.PrefixOn(appContext, getPathGraphHandler))
 	app.Get("/api/v1/colony/:colonyId/code", auth.PrefixOn(appContext, getColonyCodeHandler))
 	app.Post("/api/v1/colony/:colonyId/open", auth.PrefixOn(appContext, openColonyHandler))
@@ -34,11 +36,15 @@ func upgradeColonyLocationHandler(c *fiber.Ctx, context *meta.ApplicationContext
 	colonyID, err := c.ParamsInt("colonyId")
 	if err != nil {
 		c.Response().Header.Set(context.DDH, "Invalid colony ID "+err.Error())
+		c.Status(fiber.StatusBadRequest)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony ID")
 	}
 	colonyLocationID, err := c.ParamsInt("colonyLocationId")
 	if err != nil {
 		c.Response().Header.Set(context.DDH, "Invalid colony location ID "+err.Error())
+		c.Status(fiber.StatusBadRequest)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid colony location ID")
 	}
 
@@ -55,14 +61,19 @@ func upgradeColonyLocationHandler(c *fiber.Ctx, context *meta.ApplicationContext
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.Response().Header.Set(context.DDH, "ColonyLocation not found")
+			c.Status(fiber.StatusNotFound)
+			middleware.LogRequests(c)
 			return fiber.NewError(fiber.StatusNotFound, "ColonyLocation not found")
 		}
 
 		c.Response().Header.Set(context.DDH, "Internal server error "+err.Error())
+		c.Status(fiber.StatusInternalServerError)
+		middleware.LogRequests(c)
 		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 	}
 
 	c.Status(fiber.StatusOK)
+	middleware.LogRequests(c)
 	return c.JSON(toReturn)
 }
 
