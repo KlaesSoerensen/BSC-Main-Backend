@@ -31,7 +31,14 @@ func createTransform(xScale float64, yScale float64, xOffset float64, yOffset fl
 	}
 }
 
-func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[string]uint, error) {
+type BoundingBox struct {
+	MinX float64
+	MaxX float64
+	MinY float64
+	MaxY float64
+}
+
+func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[string]uint, error, *BoundingBox) {
 	// Positions are scaled to act as if 2048 x 1080
 	transforms := []Transform{
 		createTransform(1, 1, 650, 400, 100),  // Town Hall
@@ -45,6 +52,22 @@ func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[str
 		createTransform(1, 1, 1750, 280, 100), // Outer Walls
 		createTransform(1, 1, 1800, 450, 100), // Space Port
 		createTransform(1, 1, 620, 150, 100),  // Agriculture Center
+	}
+
+	boundingBox := BoundingBox{}
+	for _, transform := range transforms {
+		if transform.XOffset < boundingBox.MinX {
+			boundingBox.MinX = transform.XOffset
+		}
+		if transform.XOffset > boundingBox.MaxX {
+			boundingBox.MaxX = transform.XOffset
+		}
+		if transform.YOffset < boundingBox.MinY {
+			boundingBox.MinY = transform.YOffset
+		}
+		if transform.YOffset > boundingBox.MaxY {
+			boundingBox.MaxY = transform.YOffset
+		}
 	}
 
 	transformIDs := make(map[string]uint)
@@ -64,10 +87,10 @@ func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[str
 
 	for i, transform := range transforms {
 		if err := tx.Create(&transform).Error; err != nil {
-			return nil, err
+			return nil, err, nil
 		}
 		transformIDs[locationNames[i]] = transform.ID
 	}
 
-	return transformIDs, nil
+	return transformIDs, nil, &boundingBox
 }
