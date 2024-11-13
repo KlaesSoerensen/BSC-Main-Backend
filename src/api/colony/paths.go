@@ -17,7 +17,7 @@ func (ColonyLocationPath) TableName() string {
 	return "ColonyLocationPath"
 }
 
-func InitializeColonyPaths(tx *gorm.DB, colonyID uint32, locationIDMap map[uint]uint) error {
+func InitializeColonyPaths(tx *gorm.DB, colonyID uint32, colonyLocationIDMap map[uint]uint) error {
 	paths := []struct {
 		LocationA uint
 		LocationB uint
@@ -39,8 +39,8 @@ func InitializeColonyPaths(tx *gorm.DB, colonyID uint32, locationIDMap map[uint]
 	for _, loc := range paths {
 
 		// Use the map to get the ColonyLocation ID
-		locationAID, okA := locationIDMap[loc.LocationA]
-		locationBID, okB := locationIDMap[loc.LocationB]
+		locationAID, okA := colonyLocationIDMap[loc.LocationA]
+		locationBID, okB := colonyLocationIDMap[loc.LocationB]
 
 		if !okA || !okB {
 			return fmt.Errorf("Missing location ID: LocationA: %v, LocationB: %v\n", loc.LocationA, loc.LocationB)
