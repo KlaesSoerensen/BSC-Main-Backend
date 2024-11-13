@@ -21,6 +21,7 @@ func GenerateColonyAsset(assetCollectionID uint32, x float64, y float64, colonyI
 }
 
 func InsertColonyAssets(tx *gorm.DB, colonyID uint32) error {
+	//2048 x 1080, padding: 1024 x 540
 	colonyAssets := []*ColonyAssetInsertDTO{
 		GenerateColonyAsset(1, 650, 400, colonyID),
 		GenerateColonyAsset(1, 250, 400, colonyID),
