@@ -649,37 +649,41 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 	}
 
 	// Insert colony locations and commit them
-	locationIDMap, err := colony.InsertColonyLocations(appContext, tx, uint(newColony.ID), transformIDs)
+	colonyLocationIDMap, err := colony.InsertColonyLocations(appContext, tx, uint(newColony.ID), transformIDs)
 	if err != nil {
 		return handleError("Error inserting colony locations", err, true, nil, transformIDs, &newColony)
 	}
 
 	// Update the Locations array in newColony
-	for _, locationID := range locationIDMap {
+	for _, locationID := range colonyLocationIDMap {
 		newColony.Locations = append(newColony.Locations, int(locationID))
 	}
 
 	// Update the colony record with the new Locations array
 	if err := tx.Model(&newColony).Update("Locations", newColony.Locations).Error; err != nil {
-		return handleError("Error updating colony locations", err, true, locationIDMap, transformIDs, &newColony)
+		return handleError("Error updating colony locations", err, true, colonyLocationIDMap, transformIDs, &newColony)
 	}
 
 	// Commit colony locations to ensure they exist for path insertion
 	if err := tx.Commit().Error; err != nil {
-		return handleError("Error committing colony locations", err, true, locationIDMap, transformIDs, &newColony)
+		return handleError("Error committing colony locations", err, true, colonyLocationIDMap, transformIDs, &newColony)
 	}
 
 	// Start another transaction for inserting paths
 	tx = appContext.ColonyAssetDB.Begin()
 
 	// Insert colony paths using locationIDMap
-	if err := colony.InitializeColonyPaths(tx, newColony.ID, locationIDMap); err != nil {
-		return handleError("Error initializing colony paths", err, true, locationIDMap, transformIDs, &newColony)
+	if err := colony.InitializeColonyPaths(tx, newColony.ID, colonyLocationIDMap); err != nil {
+		return handleError("Error initializing colony paths", err, true, colonyLocationIDMap, transformIDs, &newColony)
+	}
+
+	if err := colony.InsertColonyAssets(tx, newColony.ID); err != nil {
+		return handleError("Error inserting colony assets", err, true, colonyLocationIDMap, transformIDs, &newColony)
 	}
 
 	// Commit the path insertions
 	if err := tx.Commit().Error; err != nil {
-		return handleError("Error committing colony paths", err, true, locationIDMap, transformIDs, &newColony)
+		return handleError("Error committing colony paths", err, true, colonyLocationIDMap, transformIDs, &newColony)
 	}
 
 	// Return the newly created colony details

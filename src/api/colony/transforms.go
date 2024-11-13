@@ -32,6 +32,7 @@ func createTransform(xScale float64, yScale float64, xOffset float64, yOffset fl
 }
 
 func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[string]uint, error) {
+	// Positions are scaled to act as if 2048 x 1080
 	transforms := []Transform{
 		createTransform(1, 1, 650, 400, 100),  // Town Hall
 		createTransform(1, 1, 400, 280, 100),  // Cantina
