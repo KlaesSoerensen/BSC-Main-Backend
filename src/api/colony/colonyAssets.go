@@ -7,6 +7,10 @@ type ColonyAssetInsertDTO struct {
 	Transform         Transform `json:"transform" gorm:"column:transform"`
 }
 
+func (cai *ColonyAssetInsertDTO) TableName() string {
+	return "ColonyAsset"
+}
+
 func GenerateColonyAsset(assetCollectionID uint32, x float64, y float64, colonyID uint32) *ColonyAssetInsertDTO {
 	return &ColonyAssetInsertDTO{
 		AssetCollectionID: assetCollectionID,
@@ -20,10 +24,11 @@ func GenerateColonyAsset(assetCollectionID uint32, x float64, y float64, colonyI
 	}
 }
 
-func InsertColonyAssets(tx *gorm.DB, colonyID uint32) error {
+func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) error {
 	//2048 x 1080, padding: 1024 x 540
+	// 10001, 400 x 400
 	colonyAssets := []*ColonyAssetInsertDTO{
-		GenerateColonyAsset(1, 650, 400, colonyID),
+		GenerateColonyAsset(10001, 650, 400, colonyID),
 		GenerateColonyAsset(1, 250, 400, colonyID),
 		GenerateColonyAsset(1, -150, 400, colonyID),
 	}

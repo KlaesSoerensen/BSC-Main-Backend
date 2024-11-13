@@ -643,7 +643,7 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 	tx = appContext.ColonyAssetDB.Begin()
 
 	// Insert transforms
-	transformIDs, err := colony.InsertTransforms(appContext, tx)
+	transformIDs, err, boundingBox := colony.InsertTransforms(appContext, tx)
 	if err != nil {
 		return handleError("Error inserting transforms", err, true, nil, transformIDs, &newColony)
 	}
@@ -677,7 +677,7 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		return handleError("Error initializing colony paths", err, true, colonyLocationIDMap, transformIDs, &newColony)
 	}
 
-	if err := colony.InsertColonyAssets(tx, newColony.ID); err != nil {
+	if err := colony.InsertColonyAssets(tx, newColony.ID, boundingBox); err != nil {
 		return handleError("Error inserting colony assets", err, true, colonyLocationIDMap, transformIDs, &newColony)
 	}
 
