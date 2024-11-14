@@ -339,14 +339,14 @@ func (a *ColonyLocationModel) TableName() string {
 }
 
 type LocationTransformTuple struct {
-	Transform  TransformDTO `json:"transform"`
-	ID         uint32       `json:"id"`
-	LocationID uint32       `json:"locationID" gorm:"foreignKey:Location;references:ID;"`
-	Level      uint32       `json:"level"`
+	Transform  CLIFormatTransform `json:"transform"`
+	ID         uint32             `json:"id"`
+	LocationID uint32             `json:"locationID" gorm:"foreignKey:Location;references:ID;"`
+	Level      uint32             `json:"level"`
 }
 type AssetTransformTuple struct {
-	Transform         TransformDTO `json:"transform"`
-	AssetCollectionID uint32       `json:"assetCollectionID"`
+	Transform         CLIFormatTransform `json:"transform"`
+	AssetCollectionID uint32             `json:"assetCollectionID"`
 }
 
 // Handler for fetching colony info by playerId and colonyId
@@ -431,7 +431,7 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 		}
 
 		colonyAssets = append(colonyAssets, AssetTransformTuple{
-			Transform:         transform,
+			Transform:         transform.ToShortCLINotation(),
 			AssetCollectionID: assetCollectionID,
 		})
 	}
@@ -466,7 +466,7 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 
 		colonyLocations = append(colonyLocations, LocationTransformTuple{
 			ID:         colonyLocation.ID,
-			Transform:  transform,
+			Transform:  transform.ToShortCLINotation(),
 			LocationID: colonyLocation.Location,
 			Level:      colonyLocation.Level,
 		})
