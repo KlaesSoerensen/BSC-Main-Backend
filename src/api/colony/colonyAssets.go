@@ -33,7 +33,7 @@ func (cai *ColonyAssetInsertDTO) TableName() string {
 }
 
 const (
-	BaseGroundTileCollectionID = 10001 // The ID of the AssetCollection containing the ground tile
+	BaseGroundTileCollectionID = 10027 // The ID of the AssetCollection containing the ground tile
 	DecorationCollectionMinID  = 10002 // Start of decoration AssetCollection IDs
 	DecorationCollectionMaxID  = 10026 // End of decoration AssetCollection IDs (inclusive)
 	horizontalPadding          = 0.5   // 50% horizontal padding
@@ -62,9 +62,13 @@ func createTileTransform(x, y float64, isDecoration bool) Transform {
 func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) ([]int, error) {
 	// Get the base tile asset information
 	var baseTile GraphicalAsset
-	if err := tx.Where("id = ?", 8001).First(&baseTile).Error; err != nil {
+	if err := tx.Where("id = ?", 8027).First(&baseTile).Error; err != nil {
 		return nil, fmt.Errorf("error fetching base tile asset: %w", err)
 	}
+
+	// Calculate tile dimensions with overlap
+	tileWidth := float64(baseTile.Width) * 0.95
+	tileHeight := float64(baseTile.Height) * 0.95
 
 	// Calculate the expanded area with different padding for horizontal and vertical
 	// Horizontal extends both ways
@@ -72,12 +76,8 @@ func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) 
 	expandedMaxX := boundingBox.MaxX + (math.Abs(boundingBox.MaxX-boundingBox.MinX) * horizontalPadding)
 
 	// Vertical: Start well below top boundary and extend downward
-	expandedMinY := boundingBox.MinY + 400 // Start 400 units below top boundary for 2048x1080 scale
+	expandedMinY := boundingBox.MinY + tileHeight*0.875
 	expandedMaxY := boundingBox.MaxY + (math.Abs(boundingBox.MaxY-boundingBox.MinY) * verticalPadding * 2)
-
-	// Calculate tile dimensions with overlap
-	tileWidth := float64(baseTile.Width) * 0.95
-	tileHeight := float64(baseTile.Height) * 0.95
 
 	// Calculate number of tiles needed for the expanded area
 	tilesX := math.Ceil((expandedMaxX - expandedMinX) / (tileWidth * 0.95))
