@@ -398,26 +398,42 @@ func getColonyInfoHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) err
 			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching transforms")
 		}
 
-		var assetCollection AssetCollectionID
+		// Get the assetCollection ID from the ColonyAsset's assetCollection field
+		var assetCollectionID uint32
 		if err := appContext.ColonyAssetDB.
-			Table("AssetCollection").
-			Select(`id`).
-			Where(`id = (SELECT id FROM "ColonyAsset" WHERE id = ?)`, colonyAssetID).
-			First(&assetCollection).Error; err != nil {
+			Table("ColonyAsset").
+			Select(`"assetCollection"`).
+			Where("id = ?", colonyAssetID).
+			Scan(&assetCollectionID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.Response().Header.Set(appContext.DDH, "No such AssetCollection "+err.Error())
-				return fiber.NewError(fiber.StatusNotFound, "No such AssetCollection")
+				c.Response().Header.Set(appContext.DDH, "No such ColonyAsset "+err.Error())
+				return fiber.NewError(fiber.StatusNotFound, "No such ColonyAsset")
 			}
 
-			c.Response().Header.Set(appContext.DDH, "Error fetching assetCollection id's "+err.Error())
-			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching assetCollection id's")
+			c.Response().Header.Set(appContext.DDH, "Error fetching assetCollection ID "+err.Error())
+			return fiber.NewError(fiber.StatusInternalServerError, "Error fetching assetCollection ID")
+		}
+
+		// Verify the AssetCollection exists
+		exists := false
+		if err := appContext.ColonyAssetDB.
+			Table("AssetCollection").
+			Select("1").
+			Where("id = ?", assetCollectionID).
+			Scan(&exists).Error; err != nil {
+			c.Response().Header.Set(appContext.DDH, "Error verifying AssetCollection "+err.Error())
+			return fiber.NewError(fiber.StatusInternalServerError, "Error verifying AssetCollection")
+		}
+
+		if !exists {
+			c.Response().Header.Set(appContext.DDH, "AssetCollection not found")
+			return fiber.NewError(fiber.StatusNotFound, "AssetCollection not found")
 		}
 
 		colonyAssets = append(colonyAssets, AssetTransformTuple{
 			Transform:         transform,
-			AssetCollectionID: assetCollection.ID,
+			AssetCollectionID: assetCollectionID,
 		})
-
 	}
 
 	colonyLocations := make([]LocationTransformTuple, 0, len(colony.Locations))
@@ -639,7 +655,7 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		return handleError("Error committing colony creation", err, false, nil, nil, &newColony)
 	}
 
-	// Start a new transaction for colony locations and assets
+	// Start a new transaction for colony locations, paths, and assets
 	tx = appContext.ColonyAssetDB.Begin()
 
 	// Insert transforms
@@ -654,29 +670,38 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 		return handleError("Error inserting colony locations", err, true, nil, transformIDs, &newColony)
 	}
 
+	// Update the Locations array in newColony
+	for _, locationID := range locationIDMap {
+		newColony.Locations = append(newColony.Locations, int(locationID))
+	}
+
+	// Update the colony record with the Locations array
+	if err := tx.Model(&newColony).Update("Locations", newColony.Locations).Error; err != nil {
+		return handleError("Error updating colony locations", err, true, locationIDMap, transformIDs, &newColony)
+	}
+
+	// Insert colony paths using locationIDMap
+	if err := colony.InitializeColonyPaths(tx, newColony.ID, locationIDMap); err != nil {
+		return handleError("Error initializing colony paths", err, true, locationIDMap, transformIDs, &newColony)
+	}
+
 	// Insert colony assets
 	assetIDs, err := colony.InsertColonyAssets(tx, newColony.ID, boundingBox)
 	if err != nil {
 		return handleError("Error inserting colony assets", err, true, locationIDMap, transformIDs, &newColony)
 	}
 
-	// Update both arrays in newColony
-	for _, locationID := range locationIDMap {
-		newColony.Locations = append(newColony.Locations, int(locationID))
-	}
+	// Update the Assets array in newColony
 	newColony.Assets = assetIDs
 
-	// Update the colony record with both new arrays
-	if err := tx.Model(&newColony).Updates(map[string]interface{}{
-		"Locations": newColony.Locations,
-		"Assets":    newColony.Assets,
-	}).Error; err != nil {
-		return handleError("Error updating colony arrays", err, true, locationIDMap, transformIDs, &newColony)
+	// Update the colony record with the Assets array
+	if err := tx.Model(&newColony).Update("Assets", newColony.Assets).Error; err != nil {
+		return handleError("Error updating colony assets", err, true, locationIDMap, transformIDs, &newColony)
 	}
 
-	// Single commit for both locations and assets
+	// Commit everything
 	if err := tx.Commit().Error; err != nil {
-		return handleError("Error committing colony locations and assets", err, true, locationIDMap, transformIDs, &newColony)
+		return handleError("Error committing colony creation", err, true, locationIDMap, transformIDs, &newColony)
 	}
 
 	// Return the newly created colony details
