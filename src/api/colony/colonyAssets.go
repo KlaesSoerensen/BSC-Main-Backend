@@ -36,7 +36,8 @@ const (
 	BaseGroundTileCollectionID = 10001 // The ID of the AssetCollection containing the ground tile
 	DecorationCollectionMinID  = 10002 // Start of decoration AssetCollection IDs
 	DecorationCollectionMaxID  = 10026 // End of decoration AssetCollection IDs (inclusive)
-	paddingMultiplier          = 1.5   // Increase coverage beyond the structure bounds
+	horizontalPadding          = 0.5   // 50% horizontal padding
+	verticalPadding            = 0.25  // 25% vertical padding
 )
 
 // Helper function to get random decoration collection ID
@@ -59,20 +60,20 @@ func createTileTransform(x, y float64, isDecoration bool) Transform {
 }
 
 func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) ([]int, error) {
-	var insertedAssetIDs []int
-
 	// Get the base tile asset information
 	var baseTile GraphicalAsset
 	if err := tx.Where("id = ?", 8001).First(&baseTile).Error; err != nil {
 		return nil, fmt.Errorf("error fetching base tile asset: %w", err)
 	}
 
-	// Calculate the expanded area with padding
-	// BoundingBox already includes the topLevelDistanceScalar
-	expandedMinX := boundingBox.MinX - (math.Abs(boundingBox.MaxX-boundingBox.MinX) * paddingMultiplier)
-	expandedMinY := boundingBox.MinY - (math.Abs(boundingBox.MaxY-boundingBox.MinY) * paddingMultiplier)
-	expandedMaxX := boundingBox.MaxX + (math.Abs(boundingBox.MaxX-boundingBox.MinX) * paddingMultiplier)
-	expandedMaxY := boundingBox.MaxY + (math.Abs(boundingBox.MaxY-boundingBox.MinY) * paddingMultiplier)
+	// Calculate the expanded area with different padding for horizontal and vertical
+	// Horizontal extends both ways
+	expandedMinX := boundingBox.MinX - (math.Abs(boundingBox.MaxX-boundingBox.MinX) * horizontalPadding)
+	expandedMaxX := boundingBox.MaxX + (math.Abs(boundingBox.MaxX-boundingBox.MinX) * horizontalPadding)
+
+	// Vertical: Start well below top boundary and extend downward
+	expandedMinY := boundingBox.MinY + 400 // Start 400 units below top boundary for 2048x1080 scale
+	expandedMaxY := boundingBox.MaxY + (math.Abs(boundingBox.MaxY-boundingBox.MinY) * verticalPadding * 2)
 
 	// Calculate tile dimensions with overlap
 	tileWidth := float64(baseTile.Width) * 0.95
@@ -80,15 +81,24 @@ func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) 
 
 	// Calculate number of tiles needed for the expanded area
 	tilesX := math.Ceil((expandedMaxX - expandedMinX) / (tileWidth * 0.95))
-	tilesY := math.Ceil((expandedMaxY - expandedMinY) / (tileHeight * 0.95))
+	tilesY := math.Ceil((expandedMaxY - expandedMinY) / (tileWidth * 0.95))
 
-	// Adjust starting position to center the grid
+	// Adjust starting position - center horizontally and start below top boundary
 	offsetX := ((tilesX * tileWidth * 0.95) - (expandedMaxX - expandedMinX)) / 2
-	offsetY := ((tilesY * tileHeight * 0.95) - (expandedMaxY - expandedMinY)) / 2
 	startX := expandedMinX - offsetX
-	startY := expandedMinY - offsetY
+	startY := expandedMinY // Start below top boundary
 
-	// Create and insert colony assets
+	// Prepare batch arrays
+	var transforms []Transform
+	var assets []ColonyAssetInsertDTO
+	var insertedAssetIDs []int
+
+	// Pre-allocate slices with approximate size
+	estimatedSize := int(tilesX * tilesY * 2) // Base tiles + estimated decorations
+	transforms = make([]Transform, 0, estimatedSize)
+	assets = make([]ColonyAssetInsertDTO, 0, estimatedSize)
+
+	// Create all tile transforms and assets first
 	for i := 0; i < int(tilesX); i++ {
 		for j := 0; j < int(tilesY); j++ {
 			// Calculate tile position with overlap
@@ -97,50 +107,49 @@ func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) 
 
 			// Create base tile transform
 			tileTransform := createTileTransform(tileX, tileY, false)
-			if err := tx.Create(&tileTransform).Error; err != nil {
-				return nil, fmt.Errorf("error creating tile transform: %w", err)
-			}
+			transforms = append(transforms, tileTransform)
 
-			// Create base tile asset
-			baseTileAsset := ColonyAssetInsertDTO{
-				AssetCollectionID: BaseGroundTileCollectionID,
-				Transform:         tileTransform.ID,
-				Colony:            colonyID,
-			}
-
-			if err := tx.Create(&baseTileAsset).Error; err != nil {
-				return nil, fmt.Errorf("error creating base tile asset: %w", err)
-			}
-			insertedAssetIDs = append(insertedAssetIDs, int(baseTileAsset.ID))
-
-			// Add 0-3 decorations per tile
-			numDecorations := rand.Intn(4)
-			for d := 0; d < numDecorations; d++ {
-				decorationCollectionID := getRandomDecorationCollectionID()
-
+			// Add 0-1 decorations per tile
+			if rand.Float64() < 0.5 { // 50% chance for a decoration
 				// Calculate decoration offsets relative to tile
 				offsetX := rand.Float64() * (tileWidth * 0.8)  // 80% of tile width
 				offsetY := rand.Float64() * (tileHeight * 0.8) // 80% of tile height
 
-				// Create decoration transform
 				decorTransform := createTileTransform(tileX+offsetX, tileY+offsetY, true)
-				if err := tx.Create(&decorTransform).Error; err != nil {
-					return nil, fmt.Errorf("error creating decoration transform: %w", err)
-				}
-
-				// Create decoration asset
-				decorationAsset := ColonyAssetInsertDTO{
-					AssetCollectionID: decorationCollectionID,
-					Transform:         decorTransform.ID,
-					Colony:            colonyID,
-				}
-
-				if err := tx.Create(&decorationAsset).Error; err != nil {
-					return nil, fmt.Errorf("error creating decoration asset: %w", err)
-				}
-				insertedAssetIDs = append(insertedAssetIDs, int(decorationAsset.ID))
+				transforms = append(transforms, decorTransform)
 			}
 		}
+	}
+
+	// Batch insert transforms
+	if err := tx.Create(&transforms).Error; err != nil {
+		return nil, fmt.Errorf("error creating transforms: %w", err)
+	}
+
+	// Create assets using the created transforms
+	for _, transform := range transforms {
+		asset := ColonyAssetInsertDTO{
+			Colony:    colonyID,
+			Transform: transform.ID,
+		}
+
+		if transform.ZIndex == 0 {
+			asset.AssetCollectionID = BaseGroundTileCollectionID
+		} else {
+			asset.AssetCollectionID = getRandomDecorationCollectionID()
+		}
+
+		assets = append(assets, asset)
+	}
+
+	// Batch insert assets
+	if err := tx.Create(&assets).Error; err != nil {
+		return nil, fmt.Errorf("error creating assets: %w", err)
+	}
+
+	// Collect asset IDs
+	for _, asset := range assets {
+		insertedAssetIDs = append(insertedAssetIDs, int(asset.ID))
 	}
 
 	return insertedAssetIDs, nil
