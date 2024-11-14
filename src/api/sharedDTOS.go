@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"otte_main_backend/src/util"
 )
 
@@ -53,6 +54,12 @@ type TransformDTO struct {
 	ZIndex  uint32  `json:"zIndex" gorm:"column:zIndex"`
 	XScale  float32 `json:"xScale" gorm:"column:xScale"`
 	YScale  float32 `json:"yScale" gorm:"column:yScale"`
+}
+type CLIFormatTransform = string
+
+func (t *TransformDTO) ToShortCLINotation() CLIFormatTransform {
+	//CLI shortHand: "xOff yOff zIndex, xScale yScale"
+	return fmt.Sprintf("%f %f %d, %f %f", t.XOffset, t.YOffset, t.ZIndex, t.XScale, t.YScale)
 }
 
 func (t *TransformDTO) TableName() string {
