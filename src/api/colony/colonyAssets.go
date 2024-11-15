@@ -48,7 +48,7 @@ func createTileTransform(x, y float64, isDecoration bool) Transform {
 func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) ([]int, error) {
 	// Get the base tile asset metadata
 	var baseTile GraphicalAsset
-	if err := tx.Where("id = ?", 8027).First(&baseTile).Error; err != nil {
+	if err := tx.Where("id = ?", 8001).First(&baseTile).Error; err != nil {
 		return nil, fmt.Errorf("error fetching base tile asset: %w", err)
 	}
 
@@ -97,7 +97,7 @@ func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) 
 		assets = append(assets, ColonyAssetInsertDTO{
 			Colony:            colonyID,
 			Transform:         transform.ID,
-			AssetCollectionID: 10027,
+			AssetCollectionID: 10001,
 		})
 	}
 
