@@ -41,17 +41,17 @@ type BoundingBox struct {
 func InsertLocationTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[string]uint, error, *BoundingBox) {
 	// Positions are scaled to act as if 2048 x 1080
 	transforms := []Transform{
-		createTransform(1, 1, 650, 400, 100),  // Town Hall
-		createTransform(1, 1, 400, 280, 100),  // Cantina
-		createTransform(1, 1, 220, 380, 100),  // Home
-		createTransform(1, 1, 850, 220, 100),  // Aquifer Plant
-		createTransform(1, 1, 600, 580, 100),  // Shield Generator
-		createTransform(1, 1, 1020, 420, 100), // Vehicle Storage
-		createTransform(1, 1, 1450, 300, 100), // Radar Dish
-		createTransform(1, 1, 1400, 500, 100), // Mining Facility
-		createTransform(1, 1, 1750, 280, 100), // Outer Walls
-		createTransform(1, 1, 1800, 450, 100), // Space Port
-		createTransform(1, 1, 620, 150, 100),  // Agriculture Center
+		createTransform(1, 1, 650, 400, 1),  // Town Hall
+		createTransform(1, 1, 400, 280, 1),  // Cantina
+		createTransform(1, 1, 220, 380, 1),  // Home
+		createTransform(1, 1, 850, 220, 1),  // Aquifer Plant
+		createTransform(1, 1, 600, 580, 1),  // Shield Generator
+		createTransform(1, 1, 1020, 420, 1), // Vehicle Storage
+		createTransform(1, 1, 1450, 300, 1), // Radar Dish
+		createTransform(1, 1, 1400, 500, 1), // Mining Facility
+		createTransform(1, 1, 1750, 280, 1), // Outer Walls
+		createTransform(1, 1, 1800, 450, 1), // Space Port
+		createTransform(1, 1, 620, 150, 1),  // Agriculture Center
 	}
 
 	boundingBox := BoundingBox{}
