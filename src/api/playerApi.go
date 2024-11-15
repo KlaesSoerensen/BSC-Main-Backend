@@ -659,7 +659,7 @@ func createColonyHandler(c *fiber.Ctx, appContext *meta.ApplicationContext) erro
 	tx = appContext.ColonyAssetDB.Begin()
 
 	// Insert transforms
-	transformIDs, err, boundingBox := colony.InsertTransforms(appContext, tx)
+	transformIDs, err, boundingBox := colony.InsertLocationTransforms(appContext, tx)
 	if err != nil {
 		return handleError("Error inserting transforms", err, true, nil, transformIDs, &newColony)
 	}

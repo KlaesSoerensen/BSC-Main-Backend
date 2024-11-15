@@ -38,7 +38,7 @@ type BoundingBox struct {
 	MaxY float64
 }
 
-func InsertTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[string]uint, error, *BoundingBox) {
+func InsertLocationTransforms(appContext *meta.ApplicationContext, tx *gorm.DB) (map[string]uint, error, *BoundingBox) {
 	// Positions are scaled to act as if 2048 x 1080
 	transforms := []Transform{
 		createTransform(1, 1, 650, 400, 100),  // Town Hall

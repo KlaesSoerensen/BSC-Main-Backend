@@ -3,7 +3,6 @@ package colony
 import (
 	"fmt"
 	"math"
-	"math/rand"
 
 	"gorm.io/gorm"
 )
@@ -32,19 +31,6 @@ func (cai *ColonyAssetInsertDTO) TableName() string {
 	return "ColonyAsset"
 }
 
-const (
-	BaseGroundTileCollectionID = 10027 // The ID of the AssetCollection containing the ground tile
-	DecorationCollectionMinID  = 10002 // Start of decoration AssetCollection IDs
-	DecorationCollectionMaxID  = 10026 // End of decoration AssetCollection IDs (inclusive)
-	horizontalPadding          = 0.5   // 50% horizontal padding
-	verticalPadding            = 0.25  // 25% vertical padding
-)
-
-// Helper function to get random decoration collection ID
-func getRandomDecorationCollectionID() uint32 {
-	return uint32(DecorationCollectionMinID + rand.Intn(DecorationCollectionMaxID-DecorationCollectionMinID+1))
-}
-
 func createTileTransform(x, y float64, isDecoration bool) Transform {
 	zIndex := 0
 	if isDecoration {
@@ -60,33 +46,26 @@ func createTileTransform(x, y float64, isDecoration bool) Transform {
 }
 
 func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) ([]int, error) {
-	// Get the base tile asset information
+	// Get the base tile asset metadata
 	var baseTile GraphicalAsset
 	if err := tx.Where("id = ?", 8027).First(&baseTile).Error; err != nil {
 		return nil, fmt.Errorf("error fetching base tile asset: %w", err)
 	}
 
-	// Calculate tile dimensions with overlap
-	tileWidth := float64(baseTile.Width) * 0.95
-	tileHeight := float64(baseTile.Height) * 0.95
+	// Everything is normalized to expecting a 2K screen size (1920x1080)
+	// so expanding by half that in all directions should assure that when standing
+	// at the outermost location, the "edge" is not seen.
+	expandedBoundingBox := BoundingBox{
+		MinX: boundingBox.MinY - (1920 / 2),
+		MaxX: boundingBox.MaxX + (1920 / 2),
+		MinY: boundingBox.MinY - (1080 / 2),
+		MaxY: boundingBox.MaxY + (1080 / 2),
+	}
 
-	// Calculate the expanded area with different padding for horizontal and vertical
-	// Horizontal extends both ways
-	expandedMinX := boundingBox.MinX - (math.Abs(boundingBox.MaxX-boundingBox.MinX) * horizontalPadding)
-	expandedMaxX := boundingBox.MaxX + (math.Abs(boundingBox.MaxX-boundingBox.MinX) * horizontalPadding)
-
-	// Vertical: Start well below top boundary and extend downward
-	expandedMinY := boundingBox.MinY + tileHeight*0.875
-	expandedMaxY := boundingBox.MaxY + (math.Abs(boundingBox.MaxY-boundingBox.MinY) * verticalPadding * 2)
-
-	// Calculate number of tiles needed for the expanded area
-	tilesX := math.Ceil((expandedMaxX - expandedMinX) / (tileWidth * 0.95))
-	tilesY := math.Ceil((expandedMaxY - expandedMinY) / (tileWidth * 0.95))
-
-	// Adjust starting position - center horizontally and start below top boundary
-	offsetX := ((tilesX * tileWidth * 0.95) - (expandedMaxX - expandedMinX)) / 2
-	startX := expandedMinX - offsetX
-	startY := expandedMinY // Start below top boundary
+	// The current base tile is 663x663, subtracting for inverse padding (feathered edges by 5% on each side)
+	// should result in placements of 596.7x596.7
+	adjustedTileWidth := float64(baseTile.Width) * 0.9
+	adjustedTileHeight := float64(baseTile.Height) * 0.9
 
 	// Prepare batch arrays
 	var transforms []Transform
@@ -94,52 +73,32 @@ func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) 
 	var insertedAssetIDs []int
 
 	// Pre-allocate slices with approximate size
-	estimatedSize := int(tilesX * tilesY * 2) // Base tiles + estimated decorations
+	deltaX := expandedBoundingBox.MaxX - expandedBoundingBox.MinX
+	deltaY := expandedBoundingBox.MaxY - expandedBoundingBox.MinY
+	estimatedSize := int(math.Floor((deltaX / adjustedTileWidth) * (deltaY / adjustedTileHeight)))
 	transforms = make([]Transform, 0, estimatedSize)
-	assets = make([]ColonyAssetInsertDTO, 0, estimatedSize)
 
-	// Create all tile transforms and assets first
-	for i := 0; i < int(tilesX); i++ {
-		for j := 0; j < int(tilesY); j++ {
-			// Calculate tile position with overlap
-			tileX := startX + (float64(i) * tileWidth * 0.95)
-			tileY := startY + (float64(j) * tileHeight * 0.95)
-
+	for x := expandedBoundingBox.MinX; x < expandedBoundingBox.MaxX; x += adjustedTileWidth {
+		for y := expandedBoundingBox.MinY; y < expandedBoundingBox.MaxY; y += adjustedTileHeight {
 			// Create base tile transform
-			tileTransform := createTileTransform(tileX, tileY, false)
+			tileTransform := createTileTransform(x, y, false)
 			transforms = append(transforms, tileTransform)
-
-			// Add 0-1 decorations per tile
-			if rand.Float64() < 0.5 { // 50% chance for a decoration
-				// Calculate decoration offsets relative to tile
-				offsetX := rand.Float64() * (tileWidth * 0.8)  // 80% of tile width
-				offsetY := rand.Float64() * (tileHeight * 0.8) // 80% of tile height
-
-				decorTransform := createTileTransform(tileX+offsetX, tileY+offsetY, true)
-				transforms = append(transforms, decorTransform)
-			}
 		}
 	}
 
 	// Batch insert transforms
 	if err := tx.Create(&transforms).Error; err != nil {
-		return nil, fmt.Errorf("error creating transforms: %w", err)
+		return nil, fmt.Errorf("error creating transforms: %s", err.Error())
 	}
 
 	// Create assets using the created transforms
+	assets = make([]ColonyAssetInsertDTO, 0, estimatedSize)
 	for _, transform := range transforms {
-		asset := ColonyAssetInsertDTO{
-			Colony:    colonyID,
-			Transform: transform.ID,
-		}
-
-		if transform.ZIndex == 0 {
-			asset.AssetCollectionID = BaseGroundTileCollectionID
-		} else {
-			asset.AssetCollectionID = getRandomDecorationCollectionID()
-		}
-
-		assets = append(assets, asset)
+		assets = append(assets, ColonyAssetInsertDTO{
+			Colony:            colonyID,
+			Transform:         transform.ID,
+			AssetCollectionID: 10027,
+		})
 	}
 
 	// Batch insert assets
