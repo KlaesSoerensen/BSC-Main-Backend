@@ -20,8 +20,8 @@ func (Transform) TableName() string {
 }
 
 func createTransform(xScale float64, yScale float64, xOffset float64, yOffset float64, zIndex int) Transform {
-	topLevelScaleScalar := .75
-	topLevelDistanceScalar := float64(2)
+	topLevelScaleScalar := .5
+	topLevelDistanceScalar := float64(1.8)
 	return Transform{
 		XScale:  xScale * topLevelScaleScalar,
 		YScale:  yScale * topLevelScaleScalar,
