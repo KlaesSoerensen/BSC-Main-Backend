@@ -103,6 +103,46 @@ func createTiles(tx *gorm.DB, colonyID uint32, baseTile *GraphicalAsset, expande
 	return assets, nil
 }
 
+func createWallTiles(tx *gorm.DB, colonyID uint32, wallTile *GraphicalAsset, expandedBoundingBox *BoundingBox, globalYOffsetWall float64) ([]ColonyAssetInsertDTO, error) {
+	adjustedTileWidth := float64(wallTile.Width) * 0.9
+	adjustedTileHeight := float64(wallTile.Height) * 0.9
+
+	deltaX := expandedBoundingBox.MaxX - expandedBoundingBox.MinX
+	estimatedSize := int(math.Floor(deltaX / adjustedTileWidth))
+
+	transforms := make([]Transform, 0, estimatedSize)
+
+	// The wall should be positioned where the ground starts (globalYOffsetWall)
+	// but considering that globalYOffsetWall is doubled, we use it without doubling
+	// and subtract the wall height to place it above
+	wallYPosition := (globalYOffsetWall / 2) - adjustedTileHeight - 125
+
+	fmt.Printf("Wall attributes - Width: %d, Height: %d\n", wallTile.Width, wallTile.Height)
+	fmt.Printf("Adjusted wall height: %f\n", adjustedTileHeight)
+	fmt.Printf("globalYOffsetWall: %f\n", globalYOffsetWall)
+	fmt.Printf("New wallYPosition: %f\n", wallYPosition)
+
+	for x := expandedBoundingBox.MinX; x < expandedBoundingBox.MaxX; x += adjustedTileWidth {
+		wallTransform := createTileTransform(x, wallYPosition, false)
+		transforms = append(transforms, wallTransform)
+	}
+
+	if err := tx.Create(&transforms).Error; err != nil {
+		return nil, fmt.Errorf("error creating wall transforms: %s", err.Error())
+	}
+
+	assets := make([]ColonyAssetInsertDTO, 0, estimatedSize)
+	for _, transform := range transforms {
+		assets = append(assets, ColonyAssetInsertDTO{
+			Colony:            colonyID,
+			Transform:         transform.ID,
+			AssetCollectionID: 10034,
+		})
+	}
+
+	return assets, nil
+}
+
 func createRandomDecorations(tx *gorm.DB, colonyID uint32, baseTile *GraphicalAsset, expandedBoundingBox *BoundingBox, globalYOffsetWall float64) ([]ColonyAssetInsertDTO, error) {
 	rand.Seed(time.Now().UnixNano())
 
@@ -155,6 +195,11 @@ func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) 
 		return nil, fmt.Errorf("error fetching base tile asset: %w", err)
 	}
 
+	var wallTile GraphicalAsset
+	if err := tx.Where("id = ?", 8034).First(&wallTile).Error; err != nil {
+		return nil, fmt.Errorf("error fetching wall tile asset: %w", err)
+	}
+
 	expandedBoundingBox := BoundingBox{
 		MinX: boundingBox.MinX - (1920 / 2),
 		MaxX: boundingBox.MaxX + (1920 / 2),
@@ -169,12 +214,18 @@ func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) 
 		return nil, fmt.Errorf("error creating tiles: %w", err)
 	}
 
+	wallAssets, err := createWallTiles(tx, colonyID, &wallTile, &expandedBoundingBox, globalYOffsetWall)
+	if err != nil {
+		return nil, fmt.Errorf("error creating wall tiles: %w", err)
+	}
+
 	decorAssets, err := createRandomDecorations(tx, colonyID, &baseTile, &expandedBoundingBox, globalYOffsetWall)
 	if err != nil {
 		return nil, fmt.Errorf("error creating decorations: %w", err)
 	}
 
-	allAssets := append(tileAssets, decorAssets...)
+	allAssets := append(tileAssets, wallAssets...)
+	allAssets = append(allAssets, decorAssets...)
 
 	if err := tx.Create(&allAssets).Error; err != nil {
 		return nil, fmt.Errorf("error creating assets: %w", err)
