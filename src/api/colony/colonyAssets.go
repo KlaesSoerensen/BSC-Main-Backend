@@ -203,7 +203,7 @@ func createWallTiles(tx *gorm.DB, colonyID uint32, wallTile *GraphicalAsset, exp
 	transforms := make([]Transform, 0, estimatedSize)
 
 	// Calculate wall Y position relative to ground position
-	wallYPosition := (globalYOffsetWall / 2) - adjustedTileHeight - 125
+	wallYPosition := (globalYOffsetWall / 2) - adjustedTileHeight - 225
 
 	// Generate transforms for each wall tile position
 	for x := expandedBoundingBox.MinX; x < expandedBoundingBox.MaxX; x += adjustedTileWidth {
@@ -316,19 +316,30 @@ func createGlassTiles(tx *gorm.DB, colonyID uint32, glassTile *GraphicalAsset, e
 
 	// Calculate total width to be covered
 	deltaX := expandedBoundingBox.MaxX - expandedBoundingBox.MinX
-	estimatedSize := int(math.Floor(deltaX / adjustedTileWidth))
+	// Double the estimated size for two rows
+	estimatedSize := int(math.Floor(deltaX/adjustedTileWidth)) * 2
 
 	// Initialize slice for transforms
 	transforms := make([]Transform, 0, estimatedSize)
 
-	// Calculate glass tile Y position relative to wall position
+	// Calculate base glass tile Y position relative to wall position
 	wallYPosition := (globalYOffsetWall / 2) - adjustedTileHeight - 125
-	glassYPosition := wallYPosition - adjustedTileHeight + 100
 
-	// Generate transforms for each glass tile position
+	// Y positions for both rows of glass
+	// First row (lower)
+	glassYPosition1 := wallYPosition - adjustedTileHeight + 100 + 100
+	// Second row (upper) - offset by adjusted tile height with a small gap
+	glassYPosition2 := glassYPosition1 - adjustedTileHeight
+
+	// Generate transforms for each glass tile position - first row
 	for x := expandedBoundingBox.MinX; x < expandedBoundingBox.MaxX; x += adjustedTileWidth {
-		glassTransform := createTileTransform(x, glassYPosition, false)
-		transforms = append(transforms, glassTransform)
+		// Create transform for lower row
+		glassTransform1 := createTileTransform(x, glassYPosition1, false)
+		transforms = append(transforms, glassTransform1)
+
+		// Create transform for upper row
+		glassTransform2 := createTileTransform(x, glassYPosition2, false)
+		transforms = append(transforms, glassTransform2)
 	}
 
 	// Save all transforms to the database
@@ -388,8 +399,8 @@ func InsertColonyAssets(tx *gorm.DB, colonyID uint32, boundingBox *BoundingBox) 
 
 	// Calculate expanded bounding box to ensure coverage beyond visible area
 	expandedBoundingBox := BoundingBox{
-		MinX: boundingBox.MinX - (1920 / 2), // Expand by half screen width
-		MaxX: boundingBox.MaxX + (1920 / 2),
+		MinX: boundingBox.MinX - (1920/2 + 200), // Expand by half screen width
+		MaxX: boundingBox.MaxX + (1920/2 + 200),
 		MinY: boundingBox.MinY - (1080 / 2), // Expand by half screen height
 		MaxY: boundingBox.MaxY + (1080 / 2),
 	}
